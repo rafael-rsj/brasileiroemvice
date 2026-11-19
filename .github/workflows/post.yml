@@ -1,0 +1,33 @@
+name: Post no feed (12h, 18h, 21h Brasília)
+on:
+  schedule:
+    - cron: "4 15 * * *"
+    - cron: "4 21 * * *"
+    - cron: "4 0 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Só gerar, sem publicar (1 = sim)"
+        default: "0"
+permissions:
+  contents: write
+concurrency:
+  group: bot
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt && python -m playwright install --with-deps chromium
+      - run: python src/main.py post
+        env:
+          DRY_RUN: ${{ inputs.dry_run || '0' }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
