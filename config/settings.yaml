@@ -1,0 +1,36 @@
+# Brasileiro em Vice — configuração central
+perfil:
+  usuario: brasileiroemvice
+  nome: "Brasileiro em Vice"
+  hashtags_fixas: ["#GTA6", "#GTAVI", "#BrasileiroEmVice"]
+
+# Modelo de IA que escreve manchetes, legendas e respostas
+ia:
+  modelo: "claude-sonnet-4-5"
+  max_tokens: 1200
+
+# Palavras que fazem uma notícia ser considerada do tema
+palavras_chave: ["gta 6", "gta vi", "grand theft auto vi", "grand theft auto 6", "leonida", "vice city", "rockstar"]
+
+# Fontes. confiavel=true conta para confirmar notícia; reddit só serve como termômetro de rumor
+fontes:
+  - {nome: "Google Notícias BR", url: "https://news.google.com/rss/search?q=%22GTA+6%22+OR+%22GTA+VI%22&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: false}
+  - {nome: "Google News EN", url: "https://news.google.com/rss/search?q=%22GTA+6%22+OR+%22GTA+VI%22&hl=en-US&gl=US&ceid=US:en", confiavel: false}
+  - {nome: "IGN", url: "https://feeds.feedburner.com/ign/games-all", confiavel: true}
+  - {nome: "GameSpot", url: "https://www.gamespot.com/feeds/news/", confiavel: true}
+  - {nome: "Eurogamer", url: "https://www.eurogamer.net/feed", confiavel: true}
+  - {nome: "PC Gamer", url: "https://www.pcgamer.com/rss/", confiavel: true}
+  - {nome: "Reddit r/GTA6", url: "https://www.reddit.com/r/GTA6/hot/.rss", confiavel: false}
+
+# Regras de segurança do modo 100% automático
+seguranca:
+  fontes_minimas_para_fato: 2      # menos que isso = selo RUMOR
+  idade_maxima_horas: 36           # ignora notícia velha
+  marcar_ia: true                  # selo "Feito com IA" em imagem gerada
+  palavras_bloqueadas: ["download grátis", "crack", "apk", "pirata", "leak link", "mod menu"]
+
+# Horários (Brasília). Os crons em .github/workflows estão em UTC (Brasília + 3h)
+agenda:
+  posts: ["12:00", "18:00", "21:00"]
+  stories: ["09:00", "13:00", "16:00", "19:30", "22:30"]
+  comentarios: "a cada hora"
