@@ -4,13 +4,14 @@ import time
 
 import requests
 
-API = "https://graph.instagram.com/v23.0"
-
-
 class IG:
     def __init__(self):
-        self.token = os.environ["IG_ACCESS_TOKEN"]
-        self.user = os.environ["IG_USER_ID"]
+        self.token = os.environ["IG_ACCESS_TOKEN"].strip()
+        self.user = os.environ["IG_USER_ID"].strip()
+        # Token "IGAA..." = login do Instagram; "EAA..." = login unificado/usuário do sistema (Facebook Graph)
+        host = "graph.instagram.com" if self.token.startswith("IG") else "graph.facebook.com"
+        global API
+        API = f"https://{host}/v23.0"
 
     def _post(self, path, **data):
         data["access_token"] = self.token
