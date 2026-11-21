@@ -2,7 +2,6 @@ name: Dicas do Tio Vice (10h Brasília)
 on:
   schedule:
     - cron: "4 13 * * *"
-    - cron: "30 18 21 11 *"
   workflow_dispatch:
     inputs:
       dry_run:
