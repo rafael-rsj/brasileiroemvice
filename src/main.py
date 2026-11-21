@@ -58,8 +58,10 @@ def _preview(files, caption):
     import shutil
     prev = ROOT / "media" / "preview"
     prev.mkdir(parents=True, exist_ok=True)
-    for f in files:
-        shutil.copy(f, prev / ("feed.jpg" if "feed" in f.name else "story.jpg"))
+    for f in prev.glob("*.jpg"):
+        f.unlink()
+    for n, f in enumerate(files):
+        shutil.copy(f, prev / ("story.jpg" if "story" in f.name else f"slide{n+1}.jpg"))
     (prev / "legenda.txt").write_text(caption, encoding="utf-8")
     subprocess.run(["git", "config", "user.name", "brasileiroemvice-bot"], check=True)
     subprocess.run(["git", "config", "user.email", "bot@users.noreply.github.com"], check=True)
@@ -98,17 +100,38 @@ def cmd_post():
         print("Nada relevante agora. Pulando este horário.")
         mark_seen([i["key"] for i in items])
         return
-    img = None
+    img, credit = None, ""
+    # 1) foto da própria matéria (sites diretos como IGN Brasil, TecMundo, Eurogamer)
     for u in data["used"]:
         img = og_image(u["link"])
         if img:
+            credit = f"IMAGEM: {u['source'].upper()}"
             break
+    # 2) galeria de imagens oficiais do jogo (assets/game), girando a cada post
+    if not img:
+        gal = sorted(p for p in (ROOT / "assets" / "game").glob("*") if p.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"))
+        if gal:
+            img = gal[len(hist) % len(gal)].as_uri()
+            credit = "IMAGEM: ROCKSTAR GAMES"
+    # 3) sem foto: o render usa um cenário ilustrado próprio
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
     base = ROOT / "media" / stamp[:6] / stamp
     common = dict(title=data["titulo"], sub=data.get("subtitulo", ""), tag=data["tag"],
                   source=data.get("fonte_principal", ""), image_url=img, stars=int(data.get("estrelas", 3)),
                   seed=len(hist))  # cada post novo gira cenário, paleta e layout
-    feed = render(base.with_name(stamp + "-feed"), fmt="feed", **common)
+    # --- carrossel: capa + detalhes + siga ---
+    cover_layout = "l-center" if img else None
+    feed = render(base.with_name(stamp + "-feed"), fmt="feed", layout=cover_layout, credit=credit, **common)
+    slides = [feed]
+    if data.get("slide2_texto"):
+        rot, val = data.get("slide2_rotulo", "").strip(), data.get("slide2_valor", "").strip()
+        t2 = f"{rot} *{val}*" if val else (rot or "Entenda:")
+        d = dict(common, title=t2, sub=data["slide2_texto"])
+        slides.append(render(base.with_name(stamp + "-2"), fmt="feed", layout="l-detail",
+                             sign="Brasileiro em Vice", credit=credit, **{k: v for k, v in d.items()}))
+    slides.append(render(base.with_name(stamp + "-3"), fmt="feed", layout="l-cta", tag="NOTICIA",
+                         title="Siga o *@brasileiroemvice*", sub="Tudo de GTA 6 todo dia: notícias, segredos e comparações.",
+                         source="", image_url=None, stars=0, seed=len(hist) + 7))
     story = render(base.with_name(stamp + "-story"), fmt="story", kicker="NOVO POST NO FEED",
                    live="VEJA NO FEED", **common)
     caption = _caption(data, cfg)
@@ -122,11 +145,15 @@ def cmd_post():
     print("LEGENDA:\n" + caption)
     _git_push(f"post {stamp}")
     if DRY:
-        _preview([feed, story], caption)
+        _preview(slides + [story], caption)
         print("DRY_RUN: não publicado", feed)
         return
     from instagram import IG
-    mid = IG().post_image(_public_url(feed), caption)
+    ig = IG()
+    if len(slides) > 1:
+        mid = ig.post_carousel([_public_url(x) for x in slides], caption)
+    else:
+        mid = ig.post_image(_public_url(feed), caption)
     print("Publicado no feed:", mid)
 
 
