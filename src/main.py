@@ -51,6 +51,24 @@ def _git_push(msg):
     time.sleep(8)  # tempo para o raw.githubusercontent atualizar
 
 
+def _preview(files, caption):
+    """No modo teste, sobe só uma prévia (media/preview) para conferir a arte, sem salvar memória nem publicar."""
+    if not os.environ.get("GITHUB_ACTIONS"):
+        return
+    import shutil
+    prev = ROOT / "media" / "preview"
+    prev.mkdir(parents=True, exist_ok=True)
+    for f in files:
+        shutil.copy(f, prev / ("feed.jpg" if "feed" in f.name else "story.jpg"))
+    (prev / "legenda.txt").write_text(caption, encoding="utf-8")
+    subprocess.run(["git", "config", "user.name", "brasileiroemvice-bot"], check=True)
+    subprocess.run(["git", "config", "user.email", "bot@users.noreply.github.com"], check=True)
+    subprocess.run(["git", "add", "media/preview"], check=True)
+    subprocess.run(["git", "commit", "-m", "prévia (teste)"], check=False)
+    subprocess.run(["git", "pull", "--rebase"], check=False)
+    subprocess.run(["git", "push"], check=True)
+
+
 def _public_url(path: Path) -> str:
     repo = os.environ.get("GITHUB_REPOSITORY", "SEU_USUARIO/brasileiroemvice")
     rel = path.relative_to(ROOT).as_posix()
@@ -58,7 +76,13 @@ def _public_url(path: Path) -> str:
 
 
 def _caption(data, cfg):
-    tags = " ".join(cfg["perfil"]["hashtags_fixas"] + [h if h.startswith("#") else "#" + h for h in data.get("hashtags", [])])
+    all_tags = cfg["perfil"]["hashtags_fixas"] + [h if h.startswith("#") else "#" + h for h in data.get("hashtags", [])]
+    seen_t, uniq = set(), []
+    for t in all_tags:
+        if t.lower() not in seen_t:
+            seen_t.add(t.lower())
+            uniq.append(t)
+    tags = " ".join(uniq[:12])
     src = data.get("fonte_principal", "")
     rumor = "\n⚠️ Rumor, ainda não confirmado pela Rockstar." if data["tag"] == "RUMOR" else ""
     return f"{data['legenda']}{rumor}\n\n📰 Fonte: {src}\n\n{tags}"[:2200]
@@ -97,6 +121,7 @@ def cmd_post():
     print("LEGENDA:\n" + caption)
     _git_push(f"post {stamp}")
     if DRY:
+        _preview([feed, story], caption)
         print("DRY_RUN: não publicado", feed)
         return
     from instagram import IG
