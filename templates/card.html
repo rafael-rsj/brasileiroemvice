@@ -62,6 +62,26 @@ h1 mark{color:var(--acc)!important}
 .l-box .content{left:36px;right:36px;padding:34px 36px 38px;background:rgba(13,6,36,.82);border:4px solid var(--acc);border-radius:22px;box-shadow:0 0 0 6px rgba(0,0,0,.25),0 0 40px rgba(0,0,0,.5);backdrop-filter:blur(6px)}
 .l-box .tag{position:absolute;top:-26px;left:30px;margin:0}
 .l-box h1{margin-top:12px}
+
+/* ===== CAPA estilo portal: foto cheia, selo e manchete centralizados ===== */
+.l-center .shade{background:linear-gradient(180deg,rgba(13,6,36,.35) 0%,rgba(13,6,36,0) 18%,rgba(13,6,36,0) 48%,rgba(13,6,36,.85) 72%,#0d0624 100%)}
+.l-center .content{text-align:center}
+.l-center .tag{background:none!important;color:var(--acc)!important;padding:0;letter-spacing:6px;font-size:28px;margin-bottom:14px}
+.l-center h1{font-size:calc({{FS}}px * 1.05)}
+.l-center .sub{display:none}
+.l-center .radar,.l-center .stars{display:none}
+/* ===== SLIDE de detalhes ===== */
+.l-detail .shade{background:linear-gradient(180deg,rgba(13,6,36,.45) 0%,rgba(13,6,36,.15) 30%,rgba(13,6,36,.9) 55%,#0d0624 75%)}
+.l-detail .radar,.l-detail .stars,.l-detail .tag{display:none}
+.l-detail h1{font-family:InterB;text-transform:none;font-size:52px;line-height:1.15;letter-spacing:0}
+.l-detail .sub{font-size:36px;line-height:1.45;color:#fff;margin-top:26px}
+.l-detail .sign{font-family:InterB;color:#fff;font-size:30px;margin-top:34px}
+.l-detail .sign small{display:block;font-family:InterM;color:rgba(255,255,255,.7);font-size:22px;margin-top:6px}
+/* ===== SLIDE final (siga) ===== */
+.l-cta .content{text-align:center;bottom:50%;transform:translateY(50%)}
+.l-cta .tag,.l-cta .radar,.l-cta .stars{display:none}
+.l-cta .shade{background:rgba(13,6,36,.55)}
+.credit{position:absolute;right:48px;top:150px;font-family:InterB;font-size:18px;letter-spacing:2px;color:rgba(255,255,255,.75);background:rgba(0,0,0,.35);padding:6px 12px;border-radius:6px}
 </style></head>
 <body><div class="wrap {{LAYOUT}} {{THEME}}">
   <div class="bg">{{BG}}</div>
@@ -76,7 +96,9 @@ h1 mark{color:var(--acc)!important}
     <div class="tag {{TAG}}">{{TAG_LABEL}}</div>
     <h1>{{TITLE}}</h1>
     <div class="sub">{{SUB}}</div>
+    {{SIGN}}
   </div>
   {{AI}}
+  {{CREDIT}}
   <div class="foot"><div class="br"><div class="flag"></div>@brasileiroemvice</div><div>{{SOURCE}}</div></div>
 </div></body></html>
