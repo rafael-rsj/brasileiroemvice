@@ -12,6 +12,10 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / "state" / "seen.json"
+VEICULOS_CONFIAVEIS = ["rockstar", "take-two", "ign", "gamespot", "eurogamer", "pc gamer", "polygon", "kotaku",
+                       "the verge", "gamesradar", "bbc", "cnn", "reuters", "bloomberg", "associated press",
+                       "g1", "globo", "uol", "folha", "estadão", "estadao", "tecmundo", "the enemy",
+                       "voxel", "ign brasil", "techtudo", "variety", "forbes"]
 UA = {"User-Agent": "Mozilla/5.0 (BrasileiroEmVice bot; +https://instagram.com/brasileiroemvice)"}
 
 
@@ -74,13 +78,15 @@ def collect() -> list[dict]:
             ts = e.get("published_parsed") or e.get("updated_parsed")
             if ts and time.time() - time.mktime(ts) > max_age:
                 continue
+            outlet = (e.get("source") or {}).get("title", "") if hasattr(e, "get") else ""
+            trusted = src["confiavel"] or any(v in outlet.lower() for v in VEICULOS_CONFIAVEIS)
             items.append({
                 "key": key_for(title),
                 "title": title,
                 "summary": summary.strip(),
                 "link": e.get("link"),
-                "source": src["nome"],
-                "trusted": src["confiavel"],
+                "source": outlet or src["nome"],
+                "trusted": trusted,
                 "published": datetime.fromtimestamp(time.mktime(ts), timezone.utc).isoformat() if ts else None,
             })
     fresh = [i for i in items if i["key"] not in seen]
