@@ -27,7 +27,7 @@ class IG:
             raise RuntimeError(f"IG {path}: {r.status_code} {r.text}")
         return r.json()
 
-    def _wait(self, container_id, tries=40):
+    def _wait(self, container_id, tries=60):
         for _ in range(tries):
             st = self._get(container_id, fields="status_code,status")
             if st.get("status_code") == "FINISHED":
@@ -64,6 +64,19 @@ class IG:
         c = self._post(f"{self.user}/media", media_type="REELS", video_url=video_url,
                        caption=caption, share_to_feed="true", **extra)["id"]
         return self._publish(c)
+
+    def post_reel_file(self, path, caption, ai_generated=False):
+        """Publica um reel enviando o arquivo direto para a Meta (upload resumível, sem precisar de URL pública)."""
+        extra = {"is_ai_generated": "true"} if ai_generated else {}
+        c = self._post(f"{self.user}/media", media_type="REELS", upload_type="resumable",
+                       caption=caption, share_to_feed="true", **extra)
+        data = open(path, "rb").read()
+        uri = c.get("uri") or f"https://rupload.facebook.com/ig-api-upload/v23.0/{c['id']}"
+        r = requests.post(uri, data=data, timeout=300, headers={
+            "Authorization": f"OAuth {self.token}", "offset": "0", "file_size": str(len(data))})
+        if not r.ok:
+            raise RuntimeError(f"upload do reel falhou: {r.status_code} {r.text}")
+        return self._publish(c["id"])
 
     def post_story(self, image_url):
         c = self._post(f"{self.user}/media", media_type="STORIES", image_url=image_url)["id"]
