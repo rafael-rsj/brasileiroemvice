@@ -106,7 +106,8 @@ def cmd_post():
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
     base = ROOT / "media" / stamp[:6] / stamp
     common = dict(title=data["titulo"], sub=data.get("subtitulo", ""), tag=data["tag"],
-                  source=data.get("fonte_principal", ""), image_url=img, stars=int(data.get("estrelas", 3)))
+                  source=data.get("fonte_principal", ""), image_url=img, stars=int(data.get("estrelas", 3)),
+                  seed=len(hist))  # cada post novo gira cenário, paleta e layout
     feed = render(base.with_name(stamp + "-feed"), fmt="feed", **common)
     story = render(base.with_name(stamp + "-story"), fmt="story", kicker="NOVO POST NO FEED",
                    live="VEJA NO FEED", **common)
