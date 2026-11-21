@@ -24,6 +24,25 @@ def _client():
     return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
 
+_MODEL = None
+
+
+def _model(cfg) -> str:
+    """Usa o modelo do settings.yaml; se for 'auto' ou não existir mais, pega o Sonnet mais novo disponível."""
+    global _MODEL
+    if _MODEL:
+        return _MODEL
+    wanted = cfg["ia"].get("modelo", "auto")
+    ids = [m.id for m in _client().models.list(limit=100).data]
+    if wanted in ids:
+        _MODEL = wanted
+    else:
+        sonnets = [i for i in ids if "sonnet" in i]
+        _MODEL = (sonnets or ids)[0]  # a lista vem do mais novo para o mais antigo
+    print("Modelo de IA:", _MODEL)
+    return _MODEL
+
+
 def _json(text: str) -> dict:
     m = re.search(r"\{.*\}", text, re.S)
     return json.loads(m.group(0))
@@ -59,7 +78,7 @@ Responda SOMENTE em JSON:
  "story_pergunta": "pergunta curta para enquete no story (máx. 40 caracteres)"
 }}"""
     msg = _client().messages.create(
-        model=cfg["ia"]["modelo"], max_tokens=cfg["ia"]["max_tokens"],
+        model=_model(cfg), max_tokens=cfg["ia"]["max_tokens"],
         system=PERSONA.format(min_src=cfg["seguranca"]["fontes_minimas_para_fato"]),
         messages=[{"role": "user", "content": prompt}])
     data = _json(msg.content[0].text)
@@ -81,7 +100,7 @@ def reply_comment(post_caption: str, comment: str) -> str | None:
     """Gera uma resposta curta para um comentário no nosso post. None = não responder."""
     cfg = load_cfg()
     msg = _client().messages.create(
-        model=cfg["ia"]["modelo"], max_tokens=200,
+        model=_model(cfg), max_tokens=200,
         system=PERSONA.format(min_src=2) + """
 Você está respondendo comentários no SEU post. Seja simpático, curto (máx. 140 caracteres), 1 emoji no máximo.
 Não responda (devolva exatamente SKIP) se o comentário for spam, ofensivo, propaganda, link, só emoji,
