@@ -43,6 +43,11 @@ def _model(cfg) -> str:
     return _MODEL
 
 
+def _text(msg) -> str:
+    """Junta só os blocos de texto da resposta (ignora blocos de raciocínio)."""
+    return "".join(getattr(b, "text", "") for b in msg.content if getattr(b, "type", "") == "text")
+
+
 def _json(text: str) -> dict:
     m = re.search(r"\{.*\}", text, re.S)
     return json.loads(m.group(0))
@@ -78,10 +83,10 @@ Responda SOMENTE em JSON:
  "story_pergunta": "pergunta curta para enquete no story (máx. 40 caracteres)"
 }}"""
     msg = _client().messages.create(
-        model=_model(cfg), max_tokens=cfg["ia"]["max_tokens"],
+        model=_model(cfg), max_tokens=max(4000, cfg["ia"]["max_tokens"]),
         system=PERSONA.format(min_src=cfg["seguranca"]["fontes_minimas_para_fato"]),
         messages=[{"role": "user", "content": prompt}])
-    data = _json(msg.content[0].text)
+    data = _json(_text(msg))
     if data.get("skip"):
         return None
     used = [items[i] for i in data.get("indices", []) if 0 <= i < len(items)]
@@ -100,11 +105,11 @@ def reply_comment(post_caption: str, comment: str) -> str | None:
     """Gera uma resposta curta para um comentário no nosso post. None = não responder."""
     cfg = load_cfg()
     msg = _client().messages.create(
-        model=_model(cfg), max_tokens=200,
+        model=_model(cfg), max_tokens=2000,
         system=PERSONA.format(min_src=2) + """
 Você está respondendo comentários no SEU post. Seja simpático, curto (máx. 140 caracteres), 1 emoji no máximo.
 Não responda (devolva exatamente SKIP) se o comentário for spam, ofensivo, propaganda, link, só emoji,
 ou se exigir uma informação que você não tem certeza.""",
         messages=[{"role": "user", "content": f"Legenda do post:\n{post_caption}\n\nComentário:\n{comment}"}])
-    out = msg.content[0].text.strip()
+    out = _text(msg).strip()
     return None if out.upper().startswith("SKIP") else out
