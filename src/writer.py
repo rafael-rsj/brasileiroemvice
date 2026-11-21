@@ -127,3 +127,37 @@ ou se exigir uma informação que você não tem certeza.""",
         messages=[{"role": "user", "content": f"Legenda do post:\n{post_caption}\n\nComentário:\n{comment}"}])
     out = _text(msg).strip()
     return None if out.upper().startswith("SKIP") else out
+
+
+TEMAS_DICAS = [
+    "relacionamento e games (o que gamers queriam ouvir do parceiro ou parceira, e vice-versa)",
+    "o que mulheres gamers queriam que os caras entendessem",
+    "dicas de GTA 6 para iniciantes", "segredos e truques de GTA 6", "como economizar comprando jogos",
+    "setup gamer barato e ergonomia", "saúde do gamer (postura, vista, sono)", "etiqueta no online e no chat de voz",
+    "jogos para jogar em casal", "sinais de que você virou viciado em GTA (humor)", "dicas para PS5 e Xbox que pouca gente conhece",
+    "regras não escritas de quem joga com amigos", "como convencer a família a liberar o videogame (humor)",
+    "coisas que só quem jogou GTA San Andreas entende", "dinheiro e trabalho: profissões no mundo dos games",
+]
+
+
+def write_tips(recent_titles: list[str], seed: int) -> dict:
+    """Carrossel de dicas do Tio Vice (mascote coroa, gamer, bem-humorado)."""
+    cfg = load_cfg()
+    tema = TEMAS_DICAS[seed % len(TEMAS_DICAS)]
+    prompt = f"""Crie um carrossel viral de dicas para o Instagram, apresentado pelo Tio Vice, mascote da página:
+um coroa brasileiro gamer, bem-humorado, sábio e sem papas na língua, mas respeitoso.
+Tema de hoje: {tema}.
+Já postamos (não repita): {"; ".join(recent_titles[-20:]) or "nada ainda"}.
+Regras: humor leve e afetuoso, sem estereótipos ofensivos, sem machismo, sem humilhar ninguém; nada de conteúdo sexual.
+Dicas práticas e que geram identificação ("é exatamente isso!"). Português do Brasil, informal.
+Responda SOMENTE em JSON:
+{{
+ "titulo": "título curto e chamativo tipo lista, ex: '7 regras para jogar online' (máx. 48 caracteres), com 1 palavra entre *asteriscos*",
+ "publico": "homens|mulheres|todos|casais",
+ "dicas": [{{"titulo": "dica em até 40 caracteres", "texto": "explicação em até 150 caracteres"}}] (de 5 a 8 itens),
+ "legenda": "legenda curta e engraçada com 1 pergunta no final pedindo para comentar o número da dica favorita",
+ "hashtags": ["até 8 hashtags"]
+}}"""
+    msg = _client().messages.create(model=_model(cfg), max_tokens=4000, system=PERSONA.format(min_src=2),
+                                    messages=[{"role": "user", "content": prompt}])
+    return _json(_text(msg))
