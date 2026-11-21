@@ -141,8 +141,16 @@ def cmd_post():
     q.append({"file": story.relative_to(ROOT).as_posix(), "created": stamp})
     _save(QUEUE, q)
     mark_seen([i["key"] for i in items])
+    img_ref = img
+    if img and img.startswith("file:"):
+        img_ref = Path(img.replace("file://", "")).relative_to(ROOT).as_posix()
     hist.append({"titulo": data["titulo"], "tag": data["tag"], "quando": stamp,
-                 "links": [u["link"] for u in data["used"]]})
+                 "links": [u["link"] for u in data["used"]],
+                 "reel": {"titulo": data["titulo"], "tag": data["tag"], "fonte": data.get("fonte_principal", ""),
+                          "img": img_ref, "credit": credit, "rotulo": data.get("slide2_rotulo", ""),
+                          "valor": data.get("slide2_valor", ""), "texto": data.get("slide2_texto", "") or data.get("subtitulo", ""),
+                          "roteiro": data.get("reel_roteiro", ""), "narrar": bool(data.get("reel_narrar", True)),
+                          "legenda": caption, "feito": False}})
     _save(HISTORY, hist[-200:])
     print("LEGENDA:\n" + caption)
     _git_push(f"post {stamp}")
@@ -203,6 +211,49 @@ def cmd_comments():
     _git_push("comentários")
 
 
+def cmd_reel():
+    """Transforma a notícia mais recente (ainda sem reel) em um reel animado e publica."""
+    import random
+    from reel import make_reel
+    hist = _load(HISTORY, [])
+    pend = [h for h in hist if h.get("reel") and not h["reel"].get("feito")]
+    if not pend:
+        print("Nenhuma notícia nova para virar reel.")
+        return
+    h = pend[-1]
+    r = dict(h["reel"])
+    if r.get("img") and not r["img"].startswith("http"):
+        r["img"] = (ROOT / r["img"]).as_uri()
+    # narração: segue a sugestão da IA na maioria das vezes, mas varia de vez em quando
+    narrar = r.get("narrar", True)
+    if random.random() < 0.2:
+        narrar = not narrar
+    seed = len(hist) * 7 + 3
+    out = ROOT / "media" / "reels" / f"{h['quando']}.mp4"
+    make_reel(r, out, narrar=narrar, seed=seed)
+    h["reel"]["feito"] = True
+    _save(HISTORY, hist)
+    caption = r.get("legenda", h["titulo"])
+    if DRY:
+        if os.environ.get("GITHUB_ACTIONS"):
+            import shutil
+            prev = ROOT / "media" / "preview"
+            prev.mkdir(parents=True, exist_ok=True)
+            shutil.copy(out, prev / "reel.mp4")
+            subprocess.run(["git", "config", "user.name", "brasileiroemvice-bot"], check=True)
+            subprocess.run(["git", "config", "user.email", "bot@users.noreply.github.com"], check=True)
+            subprocess.run(["git", "add", "media/preview/reel.mp4"], check=True)
+            subprocess.run(["git", "commit", "-m", "prévia do reel (teste)"], check=False)
+            subprocess.run(["git", "pull", "--rebase"], check=False)
+            subprocess.run(["git", "push"], check=True)
+        print("DRY_RUN reel:", out, "narrado:", narrar)
+        return
+    from instagram import IG
+    print("Reel publicado:", IG().post_reel_file(out, caption))
+    out.unlink(missing_ok=True)  # não guarda vídeo no repositório
+    _git_push("reel publicado")
+
+
 def cmd_refresh():
     from instagram import IG
     print(IG().refresh_token())
@@ -226,12 +277,13 @@ def cmd_demo():
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "demo"
     needs = {"post": ["ANTHROPIC_API_KEY"], "comments": ["ANTHROPIC_API_KEY", "IG_ACCESS_TOKEN", "IG_USER_ID"],
-             "story": [] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"], "refresh": ["IG_ACCESS_TOKEN"]}
+             "story": [] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"], "refresh": ["IG_ACCESS_TOKEN"],
+             "reel": [] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"]}
     if not DRY and cmd == "post":
         needs["post"] += ["IG_ACCESS_TOKEN", "IG_USER_ID"]
     missing = [k for k in needs.get(cmd, []) if not os.environ.get(k)]
     if missing:
         print(f"Aguardando configuração: faltam os secrets {missing}. Nada foi feito.")
         sys.exit(0)
-    {"post": cmd_post, "story": cmd_story, "comments": cmd_comments,
+    {"post": cmd_post, "story": cmd_story, "comments": cmd_comments, "reel": cmd_reel,
      "refresh": cmd_refresh, "demo": cmd_demo}[sys.argv[1] if len(sys.argv) > 1 else "demo"]()
