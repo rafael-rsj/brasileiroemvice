@@ -80,7 +80,10 @@ Responda SOMENTE em JSON:
  "fonte_principal": "nome do veículo",
  "legenda": "legenda do post em PT-BR, 3 a 6 linhas curtas, com 2-4 emojis, terminando com uma PERGUNTA para gerar comentários",
  "hashtags": ["até 8 hashtags relevantes, sem as fixas"],
- "story_pergunta": "pergunta curta para enquete no story (máx. 40 caracteres)"
+ "story_pergunta": "pergunta curta para enquete no story (máx. 40 caracteres)",
+ "slide2_rotulo": "rótulo curto do dado principal, ex: 'Tempo para zerar:' ou 'O que muda:' (máx. 24 caracteres)",
+ "slide2_valor": "o dado em destaque, ex: '82 horas' (máx. 18 caracteres, pode ficar vazio)",
+ "slide2_texto": "2 a 4 frases explicando a notícia com contexto para o fã brasileiro, sem inventar nada (máx. 380 caracteres)"
 }}"""
     msg = _client().messages.create(
         model=_model(cfg), max_tokens=max(4000, cfg["ia"]["max_tokens"]),
