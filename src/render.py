@@ -44,13 +44,14 @@ def _font_size(title: str, base: int) -> int:
 def render(out_path: Path, *, title: str, sub: str = "", tag: str = "NOTICIA",
            source: str = "", image_url: str | None = None, fmt: str = "feed",
            ai_image: bool = False, stars: int = 3, kicker: str = "PLANTÃO GTA 6",
-           live: str = "AO VIVO", seed: int | None = None, layout: str | None = None) -> Path:
+           live: str = "AO VIVO", seed: int | None = None, layout: str | None = None,
+           sign: str = "", credit: str = "") -> Path:
     f = FORMATS[fmt]
     # variação visual: cada post sai com cenário, paleta e layout diferentes
     seed = seed if seed is not None else abs(hash(title)) % 10_000
     palette = PALETTES[seed % len(PALETTES)]["name"]
     layout = layout or ["l-classic", "l-top", "l-box"][seed % 3]
-    if fmt == "story" and layout == "l-top":
+    if fmt == "story" and layout in ("l-top", "l-detail"):
         layout = "l-box"
     stars = max(0, min(5, stars))
     star_html = "".join('<span>★</span>' for _ in range(stars)) + "".join(
@@ -63,6 +64,8 @@ def render(out_path: Path, *, title: str, sub: str = "", tag: str = "NOTICIA",
         "ASSETS": (ROOT / "assets").as_uri(),
         "BG": bg,
         "LAYOUT": layout,
+        "SIGN": f'<div class="sign">{html.escape(sign)}</div>' if sign else "",
+        "CREDIT": f'<div class="credit">{html.escape(credit)}</div>' if credit else "",
         "THEME": "t-" + palette,
         "TAG": tag if tag in TAGS else "NOTICIA",
         "TAG_LABEL": TAGS.get(tag, "NOTÍCIA"),
