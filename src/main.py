@@ -123,15 +123,17 @@ def cmd_post():
     cover_layout = "l-center" if img else None
     feed = render(base.with_name(stamp + "-feed"), fmt="feed", layout=cover_layout, credit=credit, **common)
     slides = [feed]
-    if data.get("slide2_texto"):
+    carrossel = len(hist) % 2 == 0  # metade dos posts em carrossel, metade em imagem única
+    if carrossel and data.get("slide2_texto"):
         rot, val = data.get("slide2_rotulo", "").strip(), data.get("slide2_valor", "").strip()
         t2 = f"{rot} *{val}*" if val else (rot or "Entenda:")
         d = dict(common, title=t2, sub=data["slide2_texto"])
         slides.append(render(base.with_name(stamp + "-2"), fmt="feed", layout="l-detail",
                              sign="Brasileiro em Vice", credit=credit, **{k: v for k, v in d.items()}))
-    slides.append(render(base.with_name(stamp + "-3"), fmt="feed", layout="l-cta", tag="NOTICIA",
-                         title="Siga o *@brasileiroemvice*", sub="Tudo de GTA 6 todo dia: notícias, segredos e comparações.",
-                         source="", image_url=None, stars=0, seed=len(hist) + 7))
+    if carrossel:
+        slides.append(render(base.with_name(stamp + "-3"), fmt="feed", layout="l-cta", tag="NOTICIA",
+                             title="Siga o *@brasileiroemvice*", sub="Tudo de GTA 6 todo dia: notícias, segredos e comparações.",
+                             source="", image_url=None, stars=0, seed=len(hist) + 7))
     story = render(base.with_name(stamp + "-story"), fmt="story", kicker="NOVO POST NO FEED",
                    live="VEJA NO FEED", **common)
     caption = _caption(data, cfg)
