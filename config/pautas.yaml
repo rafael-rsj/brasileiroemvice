@@ -1,0 +1,6 @@
+# Pautas sugeridas pelo dono da página. O robô usa uma por vez, na frente das notícias do dia.
+# Campos: id (único), titulo, resumo (o que a fonte disse), fonte, link (opcional)
+- id: gta-brasil
+  titulo: "GTA no Brasil? Rockstar não descarta ambientar novo jogo fora dos EUA"
+  resumo: "Segundo a IGN Brasil, a Rockstar não descartou ambientar um futuro GTA fora dos Estados Unidos, o que reacendeu o pedido dos fãs por um GTA no Brasil, com cenários como o Rio de Janeiro. Não há anúncio oficial de jogo no Brasil."
+  fonte: "IGN Brasil"
