@@ -1,7 +1,8 @@
-name: Reel diário (19h Brasília)
+name: Reels (15h17 e 20h47 Brasília)
 on:
   schedule:
-    - cron: "17 22 * * *"
+    - cron: "17 18 * * *"
+    - cron: "47 23 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
