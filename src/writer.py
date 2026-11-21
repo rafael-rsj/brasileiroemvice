@@ -83,7 +83,9 @@ Responda SOMENTE em JSON:
  "story_pergunta": "pergunta curta para enquete no story (máx. 40 caracteres)",
  "slide2_rotulo": "rótulo curto do dado principal, ex: 'Tempo para zerar:' ou 'O que muda:' (máx. 24 caracteres)",
  "slide2_valor": "o dado em destaque, ex: '82 horas' (máx. 18 caracteres, pode ficar vazio)",
- "slide2_texto": "2 a 4 frases explicando a notícia com contexto para o fã brasileiro, sem inventar nada (máx. 380 caracteres)"
+ "slide2_texto": "2 a 4 frases explicando a notícia com contexto para o fã brasileiro, sem inventar nada (máx. 380 caracteres)",
+ "reel_roteiro": "texto para narração do reel, 35 a 60 palavras, tom de plantão animado, termina pedindo para seguir a página; números por extenso",
+ "reel_narrar": true ou false (true quando a notícia rende explicação falada; false quando é algo visual/rápido que fica melhor só com música)
 }}"""
     msg = _client().messages.create(
         model=_model(cfg), max_tokens=max(4000, cfg["ia"]["max_tokens"]),
