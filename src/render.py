@@ -10,7 +10,7 @@ TEMPLATE = ROOT / "templates" / "card.html"
 
 TAGS = {
     "NOTICIA": "NOTÍCIA",
-    "OFICIAL": "OFICIAL ROCKSTAR",
+    "OFICIAL": "OFICIAL",
     "RUMOR": "RUMOR • NÃO CONFIRMADO",
     "COMPARACAO": "6 vs 5 vs 4",
     "CURIOSIDADE": "VOCÊ SABIA?",
