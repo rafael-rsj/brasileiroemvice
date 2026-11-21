@@ -95,6 +95,18 @@ def cmd_post():
     cfg = load_cfg()
     hist = _load(HISTORY, [])
     items = collect()
+    # pautas sugeridas pelo dono da página (config/pautas.yaml) entram na frente
+    pfile = ROOT / "config" / "pautas.yaml"
+    if pfile.exists():
+        import yaml
+        pautas = yaml.safe_load(pfile.read_text(encoding="utf-8")) or []
+        feitas = {h.get("pauta") for h in hist}
+        for pa in pautas:
+            if pa.get("id") not in feitas:
+                items.insert(0, {"key": "pauta-" + str(pa["id"]), "title": pa["titulo"], "summary": pa.get("resumo", ""),
+                                 "link": pa.get("link", ""), "source": pa.get("fonte", ""), "trusted": True,
+                                 "pauta": pa["id"], "published": None})
+                break
     data = pick_and_write(items, [h["titulo"] for h in hist])
     if not data:
         print("Nada relevante agora. Pulando este horário.")
@@ -146,6 +158,7 @@ def cmd_post():
         img_ref = Path(img.replace("file://", "")).relative_to(ROOT).as_posix()
     hist.append({"titulo": data["titulo"], "tag": data["tag"], "quando": stamp,
                  "links": [u["link"] for u in data["used"]],
+                 "pauta": next((u.get("pauta") for u in data["used"] if u.get("pauta")), None),
                  "reel": {"titulo": data["titulo"], "tag": data["tag"], "fonte": data.get("fonte_principal", ""),
                           "img": img_ref, "credit": credit, "rotulo": data.get("slide2_rotulo", ""),
                           "valor": data.get("slide2_valor", ""), "texto": data.get("slide2_texto", "") or data.get("subtitulo", ""),
@@ -254,6 +267,29 @@ def cmd_reel():
     _git_push("reel publicado")
 
 
+def cmd_dicas():
+    """Carrossel de dicas do Tio Vice."""
+    from tips import render_tips
+    from writer import write_tips
+    cfg = load_cfg()
+    hist = _load(ROOT / "state" / "dicas.json", [])
+    data = write_tips([h["titulo"] for h in hist], seed=len(hist))
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
+    slides = render_tips(data, ROOT / "media" / stamp[:6] / f"{stamp}-dicas", seed=len(hist))
+    tags = " ".join(dict.fromkeys(cfg["perfil"]["hashtags_fixas"] + ["#TioVice"] +
+                                  [h if h.startswith("#") else "#" + h for h in data.get("hashtags", [])]))
+    caption = f"{data['legenda']}\n\n{tags}"[:2200]
+    hist.append({"titulo": data["titulo"], "publico": data.get("publico"), "quando": stamp})
+    _save(ROOT / "state" / "dicas.json", hist[-200:])
+    print("DICAS:", data["titulo"], "| público:", data.get("publico"))
+    if DRY:
+        _preview(slides, caption)
+        return
+    _git_push(f"dicas {stamp}")
+    from instagram import IG
+    print("Carrossel de dicas publicado:", IG().post_carousel([_public_url(x) for x in slides], caption))
+
+
 def cmd_refresh():
     from instagram import IG
     print(IG().refresh_token())
@@ -278,12 +314,13 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "demo"
     needs = {"post": ["ANTHROPIC_API_KEY"], "comments": ["ANTHROPIC_API_KEY", "IG_ACCESS_TOKEN", "IG_USER_ID"],
              "story": [] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"], "refresh": ["IG_ACCESS_TOKEN"],
-             "reel": [] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"]}
+             "reel": [] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"],
+             "dicas": ["ANTHROPIC_API_KEY"] + ([] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"])}
     if not DRY and cmd == "post":
         needs["post"] += ["IG_ACCESS_TOKEN", "IG_USER_ID"]
     missing = [k for k in needs.get(cmd, []) if not os.environ.get(k)]
     if missing:
         print(f"Aguardando configuração: faltam os secrets {missing}. Nada foi feito.")
         sys.exit(0)
-    {"post": cmd_post, "story": cmd_story, "comments": cmd_comments, "reel": cmd_reel,
+    {"post": cmd_post, "story": cmd_story, "comments": cmd_comments, "reel": cmd_reel, "dicas": cmd_dicas,
      "refresh": cmd_refresh, "demo": cmd_demo}[sys.argv[1] if len(sys.argv) > 1 else "demo"]()
