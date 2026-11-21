@@ -95,4 +95,10 @@ def collect() -> list[dict]:
 
 
 def og_image(url: str) -> str | None:
-    return _og_image(url)
+    """Foto da matéria. Ignora links do Google Notícias e logos (viram fundo feio na arte)."""
+    if not url or "news.google." in url:
+        return None
+    img = _og_image(url)
+    if img and not any(b in img.lower() for b in ("google", "logo", "favicon", "placeholder", "default")):
+        return img
+    return None
