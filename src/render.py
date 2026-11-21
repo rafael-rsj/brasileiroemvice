@@ -5,6 +5,8 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
+from backgrounds import PALETTES, scene_svg
+
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE = ROOT / "templates" / "card.html"
 
@@ -42,18 +44,26 @@ def _font_size(title: str, base: int) -> int:
 def render(out_path: Path, *, title: str, sub: str = "", tag: str = "NOTICIA",
            source: str = "", image_url: str | None = None, fmt: str = "feed",
            ai_image: bool = False, stars: int = 3, kicker: str = "PLANTÃO GTA 6",
-           live: str = "AO VIVO") -> Path:
+           live: str = "AO VIVO", seed: int | None = None, layout: str | None = None) -> Path:
     f = FORMATS[fmt]
+    # variação visual: cada post sai com cenário, paleta e layout diferentes
+    seed = seed if seed is not None else abs(hash(title)) % 10_000
+    palette = PALETTES[seed % len(PALETTES)]["name"]
+    layout = layout or ["l-classic", "l-top", "l-box"][seed % 3]
+    if fmt == "story" and layout == "l-top":
+        layout = "l-box"
     stars = max(0, min(5, stars))
     star_html = "".join('<span>★</span>' for _ in range(stars)) + "".join(
         '<span class="off">★</span>' for _ in range(5 - stars))
-    bg = f'<img src="{html.escape(image_url)}">' if image_url else ""
+    bg = f'<img src="{html.escape(image_url)}">' if image_url else scene_svg(seed, f["W"], f["H"])
     values = {
         "W": f["W"], "H": f["H"], "CONTENT_B": f["CONTENT_B"],
         "FS": _font_size(title, f["FS_BASE"]),
         "FONTS": (ROOT / "assets" / "fonts").as_uri(),
         "ASSETS": (ROOT / "assets").as_uri(),
         "BG": bg,
+        "LAYOUT": layout,
+        "THEME": "t-" + palette,
         "TAG": tag if tag in TAGS else "NOTICIA",
         "TAG_LABEL": TAGS.get(tag, "NOTÍCIA"),
         "TITLE": _title_html(title),
