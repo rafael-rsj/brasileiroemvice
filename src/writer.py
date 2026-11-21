@@ -93,9 +93,18 @@ Responda SOMENTE em JSON:
     trusted = sum(1 for u in used if u["trusted"])
     # trava de segurança independente da IA
     min_src = cfg["seguranca"]["fontes_minimas_para_fato"]
-    if data["tag"] == "NOTICIA" and trusted < min_src:
-        data["tag"] = "RUMOR"
-    if data["tag"] == "OFICIAL" and trusted < 1:
+    downgraded = (data["tag"] == "NOTICIA" and trusted < min_src) or (data["tag"] == "OFICIAL" and trusted < 1)
+    if downgraded:
+        # reescreve para o texto não afirmar como fato o que a trava marcou como rumor
+        fix = _client().messages.create(
+            model=_model(cfg), max_tokens=4000,
+            system=PERSONA.format(min_src=min_src),
+            messages=[{"role": "user", "content": prompt},
+                      {"role": "assistant", "content": json.dumps(data, ensure_ascii=False)},
+                      {"role": "user", "content": "As fontes confiáveis não bastam para tratar isso como fato. "
+                       "Reescreva TUDO como RUMOR (tag RUMOR), sem dizer 'oficial' ou 'confirmado', deixando claro "
+                       "que ainda não há confirmação. Mesmo formato JSON."}])
+        data = _json(_text(fix))
         data["tag"] = "RUMOR"
     data["used"] = used
     return data
