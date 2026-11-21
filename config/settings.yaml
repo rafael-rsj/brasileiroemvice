@@ -6,7 +6,7 @@ perfil:
 
 # Modelo de IA que escreve manchetes, legendas e respostas
 ia:
-  modelo: "claude-sonnet-4-5"
+  modelo: "auto"
   max_tokens: 1200
 
 # Palavras que fazem uma notícia ser considerada do tema
@@ -16,6 +16,9 @@ palavras_chave: ["gta 6", "gta vi", "grand theft auto vi", "grand theft auto 6",
 fontes:
   - {nome: "Google Notícias BR", url: "https://news.google.com/rss/search?q=%22GTA+6%22+OR+%22GTA+VI%22&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: false}
   - {nome: "Google News EN", url: "https://news.google.com/rss/search?q=%22GTA+6%22+OR+%22GTA+VI%22&hl=en-US&gl=US&ceid=US:en", confiavel: false}
+  - {nome: "IGN Brasil", url: "https://br.ign.com/feed.xml", confiavel: true}
+  - {nome: "TecMundo", url: "https://rss.tecmundo.com.br/feed", confiavel: true}
+  - {nome: "Eurogamer PT", url: "https://www.eurogamer.pt/feed", confiavel: true}
   - {nome: "IGN", url: "https://feeds.feedburner.com/ign/games-all", confiavel: true}
   - {nome: "GameSpot", url: "https://www.gamespot.com/feeds/news/", confiavel: true}
   - {nome: "Eurogamer", url: "https://www.eurogamer.net/feed", confiavel: true}
