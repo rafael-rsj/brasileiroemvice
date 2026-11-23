@@ -127,18 +127,27 @@ def cmd_post():
         mark_seen([i["key"] for i in items])
         return
     img, credit = None, ""
-    # 1) foto da própria matéria (sites diretos como IGN Brasil, TecMundo, Eurogamer)
-    for u in data["used"]:
-        img = og_image(u["link"])
-        if img:
-            credit = f"IMAGEM: {u['source'].upper()}"
-            break
-    # 2) galeria de imagens oficiais do jogo (assets/game), escolhida pelo assunto
     from gallery import pick
+    tipo = data.get("imagem", "jogo")
+
+    def foto_materia():
+        for u in data["used"]:
+            f = og_image(u["link"])
+            if f:
+                return f, u["source"]
+        return None, ""
+    if tipo in ("hardware", "misto"):
+        # assunto é console/PC: a capa mostra o aparelho (foto da matéria); o 2º slide mistura com o jogo
+        img, src = foto_materia()
+        credit = f"IMAGEM: {src.upper()}" if img else ""
     if not img:
+        # cena oficial do jogo que combine com o assunto; se não tiver, foto da matéria
         g = pick(data["titulo"] + " " + data.get("subtitulo", ""), seed=len(hist))
         if g:
             img, credit = g.as_uri(), "IMAGEM: ROCKSTAR GAMES"
+        else:
+            img, src = foto_materia()
+            credit = f"IMAGEM: {src.upper()}" if img else ""
     # 3) sem foto: o render usa um cenário ilustrado próprio
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
     base = ROOT / "media" / stamp[:6] / stamp

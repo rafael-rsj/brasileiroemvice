@@ -94,8 +94,22 @@ def collect() -> list[dict]:
     return fresh
 
 
+def resolve(url: str) -> str:
+    """Links do Google Notícias escondem o endereço real da matéria: decodifica para chegar no site."""
+    if url and "news.google." in url:
+        try:
+            from googlenewsdecoder import gnewsdecoder
+            r = gnewsdecoder(url, interval=1)
+            if r.get("status") and r.get("decoded_url"):
+                return r["decoded_url"]
+        except Exception as e:
+            print("[google news] não decodificou:", e)
+    return url
+
+
 def og_image(url: str) -> str | None:
-    """Foto da matéria. Ignora links do Google Notícias e logos (viram fundo feio na arte)."""
+    """Foto da matéria (inclusive das que vêm pelo Google Notícias). Ignora logos e imagens genéricas."""
+    url = resolve(url)
     if not url or "news.google." in url:
         return None
     img = _og_image(url)
@@ -108,6 +122,7 @@ def article_text(url: str) -> str:
     """Texto corrido da matéria (parágrafos e itens de lista), para os carrosséis de guia."""
     import html as _h
     try:
+        url = resolve(url)
         r = requests.get(url, headers={**UA, "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0"}, timeout=15)
         page = re.sub(r"(?is)<(script|style|nav|footer|header|aside|form)[^>]*>.*?</\1>", " ", r.text)
         parts = re.findall(r"(?is)<(?:p|li|h2|h3)[^>]*>(.*?)</(?:p|li|h2|h3)>", page)

@@ -7,6 +7,7 @@ from playwright.sync_api import sync_playwright
 from PIL import Image
 
 from mascot import mascot_html
+from bonecos import boneco
 
 ROOT = Path(__file__).resolve().parent.parent
 W, H = 1080, 1350
@@ -60,6 +61,19 @@ def _shot(pages, out_dir):
     return files
 
 
+def _balao(fala: str, quem: str, acc: str) -> str:
+    """Bonequinho sorrindo com balão de fala (o "outro lado" da piada)."""
+    if not fala:
+        return ""
+    return f'''<div style="position:absolute;left:50px;bottom:0">{boneco(quem, 300)}</div>
+      <div style="position:absolute;left:40px;bottom:410px;max-width:480px;background:#fff;border:5px solid #1a1024;border-radius:30px;
+           padding:22px 28px;font-family:InterB;font-size:34px;line-height:1.25;box-shadow:7px 7px 0 {acc};transform:rotate(-2deg)">
+        {html.escape(fala)}
+        <div style="position:absolute;left:70px;bottom:-30px;width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;border-top:30px solid #1a1024"></div>
+        <div style="position:absolute;left:74px;bottom:-21px;width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:24px solid #fff"></div>
+      </div>'''
+
+
 def render_tips(data: dict, out_dir: Path, seed: int = 0) -> list[Path]:
     acc = ACCENTS[seed % len(ACCENTS)]
     css = CSS % dict(fonts=(ROOT / "assets" / "fonts").as_uri(), acc=acc)
@@ -85,8 +99,9 @@ def render_tips(data: dict, out_dir: Path, seed: int = 0) -> list[Path]:
             <div style="font-family:Anton;font-size:76px;line-height:1.05;text-transform:uppercase">{_mark(d["titulo"])}</div>
             <div style="font-size:40px;line-height:1.45;margin-top:28px;max-width:900px">{html.escape(d["texto"])}</div>
           </div>
-          <div style="position:absolute;right:-30px;bottom:-40px">{mascot_html(exprs[(i + seed) % len(exprs)], 430)}</div>
-          <div class="handle">@brasileiroemvice</div><div class="count" style="left:56px;right:auto;top:auto;bottom:90px;font-size:28px;opacity:.6">{i+2}/{total}</div></body></html>''')
+          {_balao(d.get("balao", ""), data.get("quem", "ela"), acc)}
+          <div style="position:absolute;right:-40px;bottom:-40px">{mascot_html(exprs[(i + seed) % len(exprs)], 500 if d.get("balao") else 540)}</div>
+          <div class="handle" style="left:auto;right:150px;top:56px;bottom:auto;font-size:24px;opacity:.55">@brasileiroemvice</div><div class="count" style="right:56px;top:52px;bottom:auto;font-size:30px;opacity:.55">{i+2}/{total}</div></body></html>''')
     pages.append(head + f'''<div class="sig">TIO VICE AVISA</div>
       <h1 style="position:absolute;left:60px;right:60px;top:170px;font-size:104px">Salva e manda pra <span class="mk">quem precisa</span> ler isso</h1>
       <div style="position:absolute;left:60px;right:60px;top:520px;text-align:center;font-family:InterB;font-size:44px">Segue o <span class="acc">@brasileiroemvice</span><br>pra mais dicas, games e GTA 6</div>

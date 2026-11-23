@@ -46,7 +46,7 @@ h1 mark{background:none;color:%(acc)s}
 .cta{text-align:center}
 .cta b{font-family:Anton;font-size:120px;color:#fff;line-height:1.05;text-shadow:0 6px 0 #0d0624;display:block}
 .cta i{font-style:normal;font-family:InterB;font-size:40px;color:#fff;opacity:.9}
-.credit{position:absolute;top:190px;right:56px;font-family:InterB;font-size:22px;letter-spacing:2px;color:rgba(255,255,255,.8);background:rgba(0,0,0,.4);padding:8px 14px;border-radius:8px}
+.credit{position:absolute;top:190px;right:30px;font-family:InterM;font-size:15px;letter-spacing:1px;color:rgba(255,255,255,.55);text-shadow:0 1px 2px rgba(0,0,0,.6)}
 """
 
 
@@ -65,7 +65,7 @@ def _layers(d, theme, tmp):
     tag_label = {"OFICIAL": "OFICIAL", "RUMOR": "RUMOR • NÃO CONFIRMADO", "CURIOSIDADE": "VOCÊ SABIA?"}.get(d["tag"], "NOTÍCIA")
     credit = f'<div class="credit">{html.escape(d["credit"])}</div>' if d.get("credit") else ""
     pages = {
-        "hud": f'''<div class="top"><div class="brand"><img src="{assets}/perfil.png"><div><b>BRASILEIRO EM VICE</b><i>PLANTÃO GTA 6</i></div></div><div class="live">● AO VIVO</div></div>{credit}
+        "hud": f'''<div class="top"><div class="brand"><img src="{assets}/perfil.svg"><div><b>BRASILEIRO EM VICE</b><i>PLANTÃO GTA 6</i></div></div><div class="live">● AO VIVO</div></div>{credit}
                   <div class="foot"><span>@brasileiroemvice</span><span>{html.escape("Fonte: " + d["fonte"]) if d.get("fonte") else ""}</span></div>''',
         "title": f'''<div class="block" style="bottom:330px"><div class="tag">{tag_label}</div><h1 style="font-size:{_fs(d["titulo"])}px">{_mark(d["titulo"])}</h1></div>''',
         "text": f'''<div class="block card" style="bottom:300px"><div class="txt">{html.escape(d.get("texto", ""))}</div></div>''',

@@ -67,7 +67,11 @@ def pick_and_write(items: list[dict], recent_titles: list[str]) -> dict | None:
 Já postamos recentemente (não repita o assunto):
 {chr(10).join('- ' + t for t in recent_titles[-15:]) or '- nada ainda'}
 
-Escolha a pauta MAIS relevante e com mais potencial de engajamento para fãs brasileiros de GTA 6.
+Escolha a pauta com MAIS potencial de engajamento para fãs brasileiros de GTA 6. Prioridade:
+1) descobertas, segredos, easter eggs, macetes, códigos, coisas que pouca gente sabe, recursos novos do jogo;
+2) novidades oficiais (atualização, conteúdo novo, GTA Online, data, trailer);
+3) curiosidades e comparações (realismo, GTA 6 vs 5, recordes, bugs engraçados, problemas que afetam o jogador);
+4) só por último notícias de negócio (vendas, ações, processos, executivos), e só se forem gigantes.
 Agrupe itens que falam do mesmo assunto para contar as fontes. Se nada for relevante, responda {{"skip": true}}.
 Responda SOMENTE em JSON:
 {{
@@ -86,6 +90,7 @@ Responda SOMENTE em JSON:
  "slide2_valor": "o dado em destaque, ex: '82 horas' (máx. 18 caracteres, pode ficar vazio)",
  "slide2_texto": "2 a 4 frases explicando a notícia com contexto para o fã brasileiro, sem inventar nada (máx. 380 caracteres)",
  "reel_roteiro": "texto para narração do reel, 35 a 60 palavras, tom de plantão animado, termina pedindo para seguir a página; números por extenso",
+ "imagem": "jogo|hardware|misto" (hardware = o assunto é console/PC/controle/peça, a capa deve mostrar o aparelho; misto = aparelho e jogo; jogo = cena do jogo),
  "reel_narrar": true ou false (true quando a notícia rende explicação falada; false quando é algo visual/rápido que fica melhor só com música)
 }}"""
     msg = _client().messages.create(
@@ -131,37 +136,59 @@ ou se exigir uma informação que você não tem certeza.""",
 
 
 TEMAS_DICAS = [
-    "relacionamento e games (o que gamers queriam ouvir do parceiro ou parceira, e vice-versa)",
-    "o que mulheres gamers queriam que os caras entendessem",
-    "dicas de GTA 6 para iniciantes", "segredos e truques de GTA 6", "como economizar comprando jogos",
-    "setup gamer barato e ergonomia", "saúde do gamer (postura, vista, sono)", "etiqueta no online e no chat de voz",
-    "jogos para jogar em casal", "sinais de que você virou viciado em GTA (humor)", "dicas para PS5 e Xbox que pouca gente conhece",
-    "regras não escritas de quem joga com amigos", "como convencer a família a liberar o videogame (humor)",
-    "coisas que só quem jogou GTA San Andreas entende", "dinheiro e trabalho: profissões no mundo dos games",
+    # (tema, quem fala no balão do "outro lado": ela | ele | amigo | mae)
+    ("como a mulher deve agir quando o marido está jogando (manual irônico que ele vai mandar pra ela)", "ela"),
+    ("como o gamer deve agir quando a namorada quer atenção (manual irônico que ela vai mandar pra ele)", "ele"),
+    ("regras de convivência do casal em dia de lançamento de jogo", "ela"),
+    ("o que a mãe do gamer precisa entender (manual irônico)", "mae"),
+    ("como ser o amigo perfeito na jogatina online (manual irônico)", "amigo"),
+    ("sinais de que ela é a mulher da sua vida (versão gamer)", "ela"),
+    ("sinais de que ele é o homem da sua vida (versão gamer)", "ele"),
+    ("como pedir pra jogar 'só mais uma' sem arrumar briga", "ela"),
+    ("frases que todo gamer quer ouvir em casa", "ela"),
+    ("o que fazer quando seu parceiro(a) diz 'é rapidinho, só vou salvar'", "ele"),
+    ("etiqueta irônica do chat de voz", "amigo"),
+    ("como sobreviver ao fim de semana de lançamento de GTA 6 sem divórcio", "ela"),
 ]
 
 
 def write_tips(recent_titles: list[str], seed: int) -> dict:
-    """Carrossel de dicas do Tio Vice (mascote coroa, gamer, bem-humorado)."""
+    """Carrossel de dicas do Tio Vice: manual irônico e engraçado, feito pra pessoa mandar pro parceiro."""
     cfg = load_cfg()
-    tema = TEMAS_DICAS[seed % len(TEMAS_DICAS)]
-    prompt = f"""Crie um carrossel viral de dicas para o Instagram, apresentado pelo Tio Vice, mascote da página:
-um coroa brasileiro gamer, bem-humorado, sábio e sem papas na língua, mas respeitoso.
+    tema, quem = TEMAS_DICAS[seed % len(TEMAS_DICAS)]
+    quem_txt = {"ela": "a esposa/namorada", "ele": "o marido/namorado", "amigo": "o amigo da jogatina",
+                "mae": "a mãe"}[quem]
+    prompt = f"""Crie um carrossel viral de Instagram apresentado pelo Tio Vice, mascote da página: um coroa brasileiro
+gamer, tatuado, sarcástico e bonachão.
 Tema de hoje: {tema}.
 Já postamos (não repita): {"; ".join(recent_titles[-20:]) or "nada ainda"}.
-Regras: humor leve e afetuoso, sem estereótipos ofensivos, sem machismo, sem humilhar ninguém; nada de conteúdo sexual.
-Dicas práticas e que geram identificação ("é exatamente isso!"). Português do Brasil, informal.
+
+O TOM É O SEGREDO: ironia e humor de meme brasileiro. É um "manual" escrito do ponto de vista exagerado do gamer,
+com dicas curtas, no imperativo, absurdamente "óbvias" para ele. O objetivo é a pessoa ver, rir e MANDAR pro
+parceiro/amigo com um "aí, tá vendo? é assim" kkkk.
+Exemplo do tom (tema: como a mulher deve agir quando o marido está jogando):
+- "Leve um lanche pra ele" / texto: "Sem perguntar se ele tá com fome. Gamer sempre tá com fome. E sem pausar o jogo."
+- "Pergunte o que ele quer comer" / texto: "E aceite 'qualquer coisa' como resposta válida."
+- "Diga que está feliz em ver ele feliz" / texto: "Ver ele gritando com o controle às 2h da manhã é amor, na real."
+- "Peça atenção sem cobrar" / balão: "quando sobrar um tempinho aí me dá atenção 🥰"
+Crie dicas NOVAS nesse estilo (não repita os exemplos). O texto de apoio fecha a piada (ironia, exagero, uma
+alfinetada carinhosa). Em 2 a 4 dicas, inclua um "balao": uma fala curta e engraçada de {quem_txt}, que aparece como
+um bonequinho sorrindo no slide (ex: "joga aí amor, eu espero... 🙂", "é rapidinho né? 👀").
+Regras: humor carinhoso, ninguém é humilhado, sem machismo de verdade (a graça é o exagero do gamer, não diminuir
+ninguém), nada sexual. Português do Brasil bem informal.
 Responda SOMENTE em JSON:
 {{
- "titulo": "título curto e chamativo tipo lista, ex: '7 regras para jogar online' (máx. 48 caracteres), com 1 palavra entre *asteriscos*",
+ "titulo": "título chamativo de manual/lista, máx. 46 caracteres, com 1 a 2 palavras entre *asteriscos* (ex: 'Como agir quando ele está *jogando*')",
  "publico": "homens|mulheres|todos|casais",
- "dicas": [{{"titulo": "dica em até 40 caracteres", "texto": "explicação em até 150 caracteres"}}] (de 5 a 8 itens),
- "legenda": "legenda que prende: 1ª linha gancho em MAIÚSCULAS com 1 emoji; linha em branco; 2 frases engraçadas de identificação; depois a lista das dicas resumidas, uma por linha, começando com 1️⃣ 2️⃣ 3️⃣...; termina pedindo para comentar o número da dica favorita e marcar alguém que precisa ler. Sem hashtags. Use quebras de linha \\n",
+ "dicas": [{{"titulo": "dica no imperativo, até 38 caracteres, 1 palavra entre *asteriscos*", "texto": "fecha a piada, até 120 caracteres", "balao": "fala opcional do bonequinho, até 60 caracteres, ou string vazia"}}] (de 5 a 7 itens),
+ "legenda": "legenda: 1ª linha gancho em MAIÚSCULAS com 1 emoji (ex: '📢 MANDA PRO SEU MARIDO VER QUE VOCÊ É PERFEITA'); linha em branco; 1 frase irônica; a lista das dicas resumidas com 1️⃣ 2️⃣ 3️⃣...; termina com 'Marca quem precisa ler isso 👇'. Sem hashtags. Use \\n",
  "hashtags": ["até 8 hashtags"]
 }}"""
     msg = _client().messages.create(model=_model(cfg), max_tokens=4000, system=PERSONA.format(min_src=2),
                                     messages=[{"role": "user", "content": prompt}])
-    return _json(_text(msg))
+    out = _json(_text(msg))
+    out["quem"] = quem
+    return out
 
 
 GUIA_TIPOS = ("guia, lista, ranking, segredos, easter eggs, localização de itens/carros/animais, códigos e truques, "
@@ -172,7 +199,7 @@ def write_guide(items: list[dict], recent_titles: list[str]) -> dict | None:
     """Carrossel estilo portal (guia/lista/segredos) a partir de uma matéria com texto completo.
     Passo 1: escolhe a matéria que rende lista. Passo 2: lê a matéria e escreve os slides só com o que ela diz."""
     from news import article_text
-    cands = [it for it in items if it.get("link") and "news.google." not in it["link"]][:40]
+    cands = [it for it in items if it.get("link")][:40]
     if not cands:
         return None
     cfg = load_cfg()

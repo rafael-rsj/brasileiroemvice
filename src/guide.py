@@ -86,7 +86,7 @@ def head(acc: str) -> str:
 
 
 def brand() -> str:
-    return f'<div class="brand"><img src="{(ROOT / "assets" / "perfil.png").as_uri()}">BRASILEIRO EM VICE</div>'
+    return f'<div class="brand"><img src="{(ROOT / "assets" / "perfil.svg").as_uri()}">BRASILEIRO EM VICE</div>'
 
 
 def cta_page(acc: str, n: int, total: int, titulo: str = "Curtiu? Então *fortalece*", bg: str | None = None) -> str:
@@ -117,7 +117,7 @@ def render_guide(data: dict, images: list[str], out_dir: Path, seed: int = 0) ->
     total = len(slides) + 2
     img = lambda i: images[i % len(images)] if images else ""
     fonte = html.escape(data.get("fonte", ""))
-    credit = '<div style="position:absolute;right:44px;top:112px;font-family:InterB;font-size:16px;letter-spacing:2px;color:rgba(255,255,255,.7);background:rgba(0,0,0,.4);padding:5px 10px;border-radius:5px">IMAGEM: ROCKSTAR GAMES</div>'
+    credit = '<div style="position:absolute;right:16px;top:752px;font-family:InterM;font-size:12px;letter-spacing:1px;color:rgba(255,255,255,.55);text-shadow:0 1px 2px rgba(0,0,0,.6)">Imagem: Rockstar Games</div>'
     t = data["titulo"]
     pages = [hd + f'''<img class="ph" src="{img(0)}" style="height:1350px">
       <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(13,6,36,.55) 0%,rgba(13,6,36,0) 22%,rgba(13,6,36,0) 42%,rgba(13,6,36,.9) 68%,#0d0624 100%)"></div>
