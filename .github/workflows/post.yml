@@ -1,4 +1,4 @@
-name: Post no feed (12h, 18h, 21h Brasília)
+name: Post no feed (12h notícia, 18h guia, 21h notícia)
 on:
   schedule:
     - cron: "4 15 * * *"
@@ -9,6 +9,11 @@ on:
       dry_run:
         description: "Só gerar, sem publicar (1 = sim)"
         default: "0"
+      modo:
+        description: "post = notícia | guia = carrossel de guia/lista"
+        type: choice
+        options: [post, guia]
+        default: post
 permissions:
   contents: write
 concurrency:
@@ -25,7 +30,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt && python -m playwright install --with-deps chromium
-      - run: python src/main.py post
+      - run: python src/main.py ${{ github.event.schedule == '4 21 * * *' && 'guia' || inputs.modo || 'post' }}
         env:
           DRY_RUN: ${{ inputs.dry_run || '0' }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
