@@ -6,7 +6,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 from PIL import Image
 
-from mascot import mascot_svg
+from mascot import mascot_html
 
 ROOT = Path(__file__).resolve().parent.parent
 W, H = 1080, 1350
@@ -28,6 +28,8 @@ body:before{content:"";position:absolute;inset:0;background:
 .count{position:absolute;right:56px;bottom:40px;font-family:Anton;font-size:34px;color:#1a1024;opacity:.8}
 .sig{position:absolute;left:56px;top:52px;font-family:InterB;font-size:26px;letter-spacing:3px;color:#fff;background:%(acc)s;padding:10px 18px;border-radius:10px;transform:rotate(-2deg)}
 h1{font-family:Anton;text-transform:uppercase;line-height:1.02;color:#1a1024;text-align:center}
+.salva{position:absolute;right:56px;top:46px;background:#1a1024;color:#ffc145;font-family:Anton;font-size:32px;padding:10px 20px;transform:rotate(3deg)}
+.swipe{position:absolute;right:56px;bottom:44px;font-family:InterB;font-size:26px;letter-spacing:2px;color:#1a1024;background:#ffc145;padding:10px 18px;border-radius:30px}
 .spark{position:absolute;stroke:#ffc145;stroke-width:9;stroke-linecap:round}
 """
 
@@ -71,9 +73,10 @@ def render_tips(data: dict, out_dir: Path, seed: int = 0) -> list[Path]:
     pages = [head + f'''<div class="sig">DICAS DO TIO VICE</div>
       <h1 style="position:absolute;left:60px;right:60px;top:130px;font-size:{fs}px">{_mark(t)}</h1>
       {sparks}
-      <div style="position:absolute;left:50%;bottom:-40px;transform:translateX(-50%)">{mascot_svg("sorriso", 640)}</div>
-      <div class="count">01</div></body></html>''']
-    exprs = ["piscada", "sorriso", "surpreso"]
+      <div style="position:absolute;left:50%;bottom:-40px;transform:translateX(-50%)">{mascot_html("apontando", 680)}</div>
+      <div class="salva">SALVA ESSE POST</div>
+      <div class="swipe">ARRASTA →</div></body></html>''']
+    exprs = ["joinha", "pensando", "piscada", "surpreso", "rindo", "jogando", "bravo", "sorriso"]
     for i, d in enumerate(dicas):
         pages.append(head + f'''<div class="sig">DICA {i+1} DE {len(dicas)}</div>
           <div style="position:absolute;left:60px;top:150px;width:150px;height:150px;border-radius:50%;background:{acc};color:#fff;
@@ -82,11 +85,11 @@ def render_tips(data: dict, out_dir: Path, seed: int = 0) -> list[Path]:
             <div style="font-family:Anton;font-size:76px;line-height:1.05;text-transform:uppercase">{_mark(d["titulo"])}</div>
             <div style="font-size:40px;line-height:1.45;margin-top:28px;max-width:900px">{html.escape(d["texto"])}</div>
           </div>
-          <div style="position:absolute;right:-40px;bottom:-60px">{mascot_svg(exprs[i % 3], 400)}</div>
-          <div class="handle">@brasileiroemvice</div><div class="count" style="right:380px">{i+2:02d}</div></body></html>''')
+          <div style="position:absolute;right:-30px;bottom:-40px">{mascot_html(exprs[(i + seed) % len(exprs)], 430)}</div>
+          <div class="handle">@brasileiroemvice</div><div class="count" style="left:56px;right:auto;top:auto;bottom:90px;font-size:28px;opacity:.6">{i+2}/{total}</div></body></html>''')
     pages.append(head + f'''<div class="sig">TIO VICE AVISA</div>
       <h1 style="position:absolute;left:60px;right:60px;top:170px;font-size:104px">Salva e manda pra <span class="mk">quem precisa</span> ler isso</h1>
       <div style="position:absolute;left:60px;right:60px;top:520px;text-align:center;font-family:InterB;font-size:44px">Segue o <span class="acc">@brasileiroemvice</span><br>pra mais dicas, games e GTA 6</div>
-      <div style="position:absolute;left:50%;bottom:-60px;transform:translateX(-50%)">{mascot_svg("piscada", 560)}</div>
-      <div class="count">{total:02d}</div></body></html>''')
+      <div style="position:absolute;left:50%;bottom:-60px;transform:translateX(-50%)">{mascot_html("comemorando", 600)}</div>
+      </body></html>''')
     return _shot(pages, out_dir)

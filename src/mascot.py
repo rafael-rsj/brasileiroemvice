@@ -122,3 +122,23 @@ def mascot_svg(expr: str = "sorriso", width: int = 620) -> str:
   </g>
 </g>
 </svg>'''
+
+
+_SVG_FALLBACK = {"apontando": "sorriso", "joinha": "sorriso", "pensando": "surpreso", "rindo": "piscada",
+                 "bravo": "surpreso", "jogando": "sorriso", "comemorando": "piscada"}
+
+
+def mascot_html(expr: str, width: int, style: str = "") -> str:
+    """Tio Vice pronto para colocar na arte: usa as poses geradas por IA (assets/mascote) quando existem."""
+    from pathlib import Path
+    png = Path(__file__).resolve().parent.parent / "assets" / "mascote" / f"{expr}.png"
+    if png.exists():
+        return (f'<img src="{png.as_uri()}" style="width:{width}px;display:block;'
+                f'filter:drop-shadow(0 18px 24px rgba(0,0,0,.35));{style}">')
+    svg_expr = expr if expr in ("sorriso", "piscada", "surpreso") else _SVG_FALLBACK.get(expr, "sorriso")
+    return f'<div style="{style}">{mascot_svg(svg_expr, width)}</div>'
+
+
+def has_ai_mascot() -> bool:
+    from pathlib import Path
+    return (Path(__file__).resolve().parent.parent / "assets" / "mascote" / "sorriso.png").exists()

@@ -102,3 +102,16 @@ def og_image(url: str) -> str | None:
     if img and not any(b in img.lower() for b in ("google", "logo", "favicon", "placeholder", "default")):
         return img
     return None
+
+
+def article_text(url: str) -> str:
+    """Texto corrido da matéria (parágrafos e itens de lista), para os carrosséis de guia."""
+    import html as _h
+    try:
+        r = requests.get(url, headers={**UA, "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0"}, timeout=15)
+        page = re.sub(r"(?is)<(script|style|nav|footer|header|aside|form)[^>]*>.*?</\1>", " ", r.text)
+        parts = re.findall(r"(?is)<(?:p|li|h2|h3)[^>]*>(.*?)</(?:p|li|h2|h3)>", page)
+        txt = [_h.unescape(re.sub(r"<[^>]+>", "", x)).strip() for x in parts]
+        return "\n".join(t for t in txt if len(t) > 25)
+    except Exception:
+        return ""

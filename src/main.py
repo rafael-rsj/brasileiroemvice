@@ -77,17 +77,31 @@ def _public_url(path: Path) -> str:
     return f"https://raw.githubusercontent.com/{repo}/main/{rel}"
 
 
-def _caption(data, cfg):
-    all_tags = cfg["perfil"]["hashtags_fixas"] + [h if h.startswith("#") else "#" + h for h in data.get("hashtags", [])]
+CTAS = [
+    ["💬 Comenta o que você achou", "📌 Salva pra não perder", "🔁 Manda pro parça que joga junto", "➕ Segue @brasileiroemvice pra mais GTA 6 todo dia"],
+    ["👇 Deixa sua opinião aqui embaixo", "📌 Salva esse post", "👥 Marca quem vai querer saber disso", "🔔 Segue @brasileiroemvice e ativa as notificações"],
+    ["💬 Responde aí nos comentários", "🔁 Compartilha com quem tá esperando o GTA 6", "📌 Salva pra consultar depois", "➕ Segue @brasileiroemvice: notícia, segredo e dica todo dia"],
+]
+
+
+def _tags(cfg, extra, more=()):
+    all_tags = cfg["perfil"]["hashtags_fixas"] + list(more) + [h if h.startswith("#") else "#" + h for h in extra]
     seen_t, uniq = set(), []
     for t in all_tags:
         if t.lower() not in seen_t:
             seen_t.add(t.lower())
             uniq.append(t)
-    tags = " ".join(uniq[:12])
+    return " ".join(uniq[:12])
+
+
+def _cta(seed):
+    return "\n".join(CTAS[seed % len(CTAS)])
+
+
+def _caption(data, cfg, seed=0):
     src = data.get("fonte_principal", "")
     rumor = "\n⚠️ Rumor, ainda não confirmado pela Rockstar." if data["tag"] == "RUMOR" else ""
-    return f"{data['legenda']}{rumor}\n\n📰 Fonte: {src}\n\n{tags}"[:2200]
+    return f"{data['legenda']}{rumor}\n\n{_cta(seed)}\n\n📰 Fonte: {src}\n\n{_tags(cfg, data.get('hashtags', []))}"[:2200]
 
 
 def cmd_post():
@@ -119,12 +133,12 @@ def cmd_post():
         if img:
             credit = f"IMAGEM: {u['source'].upper()}"
             break
-    # 2) galeria de imagens oficiais do jogo (assets/game), girando a cada post
+    # 2) galeria de imagens oficiais do jogo (assets/game), escolhida pelo assunto
+    from gallery import pick
     if not img:
-        gal = sorted(p for p in (ROOT / "assets" / "game").glob("*") if p.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"))
-        if gal:
-            img = gal[len(hist) % len(gal)].as_uri()
-            credit = "IMAGEM: ROCKSTAR GAMES"
+        g = pick(data["titulo"] + " " + data.get("subtitulo", ""), seed=len(hist))
+        if g:
+            img, credit = g.as_uri(), "IMAGEM: ROCKSTAR GAMES"
     # 3) sem foto: o render usa um cenário ilustrado próprio
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
     base = ROOT / "media" / stamp[:6] / stamp
@@ -133,22 +147,35 @@ def cmd_post():
                   seed=len(hist))  # cada post novo gira cenário, paleta e layout
     # --- carrossel: capa + detalhes + siga ---
     cover_layout = "l-center" if img else None
-    feed = render(base.with_name(stamp + "-feed"), fmt="feed", layout=cover_layout, credit=credit, **common)
-    slides = [feed]
     carrossel = len(hist) % 2 == 0  # metade dos posts em carrossel, metade em imagem única
+    feed = render(base.with_name(stamp + "-feed"), fmt="feed", layout=cover_layout, credit=credit,
+                  swipe="ARRASTA PRO LADO" if carrossel else "", **common)
+    slides = [feed]
     if carrossel and data.get("slide2_texto"):
+        from mascot import mascot_html
         rot, val = data.get("slide2_rotulo", "").strip(), data.get("slide2_valor", "").strip()
         t2 = f"{rot} *{val}*" if val else (rot or "Entenda:")
-        d = dict(common, title=t2, sub=data["slide2_texto"])
-        slides.append(render(base.with_name(stamp + "-2"), fmt="feed", layout="l-detail",
-                             sign="Brasileiro em Vice", credit=credit, **{k: v for k, v in d.items()}))
+        g2 = pick(data["titulo"], seed=len(hist) + 1, avoid={Path(img).name} if img else None)
+        img2, credit2 = (g2.as_uri(), "IMAGEM: ROCKSTAR GAMES") if g2 else (img, credit)
+        tio = data.get("comentario_tio", "").strip()
+        extra, lay = "", "l-detail"
+        if tio:
+            import html as _h
+            expr = ["surpreso", "pensando", "rindo", "joinha", "piscada"][len(hist) % 5]
+            extra = (f'<div class="tio">{mascot_html(expr, 420)}</div>'
+                     f'<div class="bubble"><b>TIO VICE COMENTA</b>{_h.escape(tio)}</div>')
+            lay = "l-detail has-tio"
+        d = dict(common, title=t2, sub=data["slide2_texto"], image_url=img2)
+        slides.append(render(base.with_name(stamp + "-2"), fmt="feed", layout=lay, extra=extra,
+                             sign="Brasileiro em Vice", credit=credit2, **d))
     if carrossel:
-        slides.append(render(base.with_name(stamp + "-3"), fmt="feed", layout="l-cta", tag="NOTICIA",
-                             title="Siga o *@brasileiroemvice*", sub="Tudo de GTA 6 todo dia: notícias, segredos e comparações.",
-                             source="", image_url=None, stars=0, seed=len(hist) + 7))
+        from guide import cta_page, shot
+        g3 = pick("leonida", seed=len(hist) + 2)
+        slides += shot([cta_page("#ffc145", len(slides) + 1, len(slides) + 1, bg=g3.as_uri() if g3 else None)],
+                       base.parent / (stamp + "-cta"), "cta")
     story = render(base.with_name(stamp + "-story"), fmt="story", kicker="NOVO POST NO FEED",
                    live="VEJA NO FEED", **common)
-    caption = _caption(data, cfg)
+    caption = _caption(data, cfg, len(hist))
     q = _load(QUEUE, [])
     q.append({"file": story.relative_to(ROOT).as_posix(), "created": stamp})
     _save(QUEUE, q)
@@ -276,9 +303,7 @@ def cmd_dicas():
     data = write_tips([h["titulo"] for h in hist], seed=len(hist))
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
     slides = render_tips(data, ROOT / "media" / stamp[:6] / f"{stamp}-dicas", seed=len(hist))
-    tags = " ".join(dict.fromkeys(cfg["perfil"]["hashtags_fixas"] + ["#TioVice"] +
-                                  [h if h.startswith("#") else "#" + h for h in data.get("hashtags", [])]))
-    caption = f"{data['legenda']}\n\n{tags}"[:2200]
+    caption = f"{data['legenda']}\n\n{_cta(len(hist) + 1)}\n\n{_tags(cfg, data.get('hashtags', []), ['#TioVice'])}"[:2200]
     hist.append({"titulo": data["titulo"], "publico": data.get("publico"), "quando": stamp})
     _save(ROOT / "state" / "dicas.json", hist[-200:])
     print("DICAS:", data["titulo"], "| público:", data.get("publico"))
@@ -288,6 +313,66 @@ def cmd_dicas():
     _git_push(f"dicas {stamp}")
     from instagram import IG
     print("Carrossel de dicas publicado:", IG().post_carousel([_public_url(x) for x in slides], caption))
+
+
+def cmd_guia():
+    """Carrossel estilo portal (guia, lista, segredos) com imagens oficiais. Sem pauta boa, vira post normal."""
+    from gallery import pick
+    from guide import render_guide
+    from writer import write_guide
+    cfg = load_cfg()
+    hist = _load(HISTORY, [])
+    items = collect()
+    data = write_guide(items, [h["titulo"] for h in hist])
+    if not data:
+        print("Nenhuma matéria rende guia agora. Fazendo post de notícia.")
+        return cmd_post()
+    seed = len(hist)
+    used = set()
+    imgs = []
+    for txt in [data.get("tema", data["titulo"])] + [s.get("cena", s["titulo"]) for s in data["slides"][:8]] + ["vice city"]:
+        g = pick(txt + " " + data["titulo"], seed=seed + len(imgs), avoid=used)
+        if g:
+            used.add(g.name)
+            imgs.append(g.as_uri())
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
+    slides = render_guide(data, imgs, ROOT / "media" / stamp[:6] / f"{stamp}-guia", seed=seed)
+    caption = (f"{data['legenda']}\n\n{_cta(seed)}\n\n📰 Fonte: {data['fonte']}\n📸 Imagens: Rockstar Games\n\n"
+               f"{_tags(cfg, data.get('hashtags', []))}")[:2200]
+    print("GUIA:", data["titulo"], "| fonte:", data["fonte"])
+    print("LEGENDA:\n" + caption)
+    if DRY:
+        _preview(slides, caption)
+        return
+    mark_seen([u["key"] for u in data["used"]])
+    hist.append({"titulo": data["titulo"], "tag": "GUIA", "quando": stamp, "links": [u["link"] for u in data["used"]]})
+    _save(HISTORY, hist[-200:])
+    _git_push(f"guia {stamp}")
+    from instagram import IG
+    print("Guia publicado:", IG().post_carousel([_public_url(x) for x in slides], caption))
+
+
+def _push_paths(paths, msg):
+    if not os.environ.get("GITHUB_ACTIONS"):
+        return
+    subprocess.run(["git", "config", "user.name", "brasileiroemvice-bot"], check=True)
+    subprocess.run(["git", "config", "user.email", "bot@users.noreply.github.com"], check=True)
+    subprocess.run(["git", "add", *paths], check=True)
+    subprocess.run(["git", "commit", "-m", msg], check=False)
+    subprocess.run(["git", "pull", "--rebase"], check=False)
+    subprocess.run(["git", "push"], check=True)
+
+
+def cmd_galeria():
+    from gallery import fetch_gallery
+    fetch_gallery()
+    _push_paths(["assets/game"], "galeria de imagens oficiais")
+
+
+def cmd_mascote():
+    from mascot_ai import make_kit
+    print("Poses geradas:", make_kit())
+    _push_paths(["assets/mascote", "media/preview"], "kit de poses do Tio Vice")
 
 
 def cmd_refresh():
@@ -315,12 +400,14 @@ if __name__ == "__main__":
     needs = {"post": ["ANTHROPIC_API_KEY"], "comments": ["ANTHROPIC_API_KEY", "IG_ACCESS_TOKEN", "IG_USER_ID"],
              "story": [] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"], "refresh": ["IG_ACCESS_TOKEN"],
              "reel": [] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"],
-             "dicas": ["ANTHROPIC_API_KEY"] + ([] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"])}
-    if not DRY and cmd == "post":
+             "dicas": ["ANTHROPIC_API_KEY"] + ([] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"]),
+             "mascote": ["GEMINI_API_KEY"]}
+    needs["guia"] = needs["post"]
+    if not DRY and cmd in ("post", "guia"):
         needs["post"] += ["IG_ACCESS_TOKEN", "IG_USER_ID"]
     missing = [k for k in needs.get(cmd, []) if not os.environ.get(k)]
     if missing:
         print(f"Aguardando configuração: faltam os secrets {missing}. Nada foi feito.")
         sys.exit(0)
     {"post": cmd_post, "story": cmd_story, "comments": cmd_comments, "reel": cmd_reel, "dicas": cmd_dicas,
-     "refresh": cmd_refresh, "demo": cmd_demo}[sys.argv[1] if len(sys.argv) > 1 else "demo"]()
+     "guia": cmd_guia, "galeria": cmd_galeria, "mascote": cmd_mascote, "refresh": cmd_refresh, "demo": cmd_demo}[sys.argv[1] if len(sys.argv) > 1 else "demo"]()

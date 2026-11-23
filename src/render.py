@@ -45,7 +45,7 @@ def render(out_path: Path, *, title: str, sub: str = "", tag: str = "NOTICIA",
            source: str = "", image_url: str | None = None, fmt: str = "feed",
            ai_image: bool = False, stars: int = 3, kicker: str = "PLANTÃO GTA 6",
            live: str = "AO VIVO", seed: int | None = None, layout: str | None = None,
-           sign: str = "", credit: str = "") -> Path:
+           sign: str = "", credit: str = "", extra: str = "", swipe: str = "") -> Path:
     f = FORMATS[fmt]
     # variação visual: cada post sai com cenário, paleta e layout diferentes
     seed = seed if seed is not None else abs(hash(title)) % 10_000
@@ -75,6 +75,9 @@ def render(out_path: Path, *, title: str, sub: str = "", tag: str = "NOTICIA",
         "STARS": star_html,
         "KICKER": html.escape(kicker),
         "LIVE": html.escape(live),
+        "EXTRA": extra,
+        "SWIPE": (f'<div class="swipe">{html.escape(swipe)} <svg width="40" height="22" viewBox="0 0 44 24"><path d="M2 12h38M30 3l10 9-10 9" '
+                  'fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>') if swipe else "",
         "AI": '<div class="ai">IMAGEM GERADA POR IA</div>' if ai_image else "",
     }
     page = TEMPLATE.read_text(encoding="utf-8")

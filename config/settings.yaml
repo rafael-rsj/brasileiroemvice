@@ -34,6 +34,6 @@ seguranca:
 
 # Horários (Brasília). Os crons em .github/workflows estão em UTC (Brasília + 3h)
 agenda:
-  posts: ["12:00", "18:00", "21:00"]
+  posts: ["12:00 notícia", "18:00 guia/lista (ou notícia)", "21:00 notícia"]
   stories: ["09:00", "13:00", "16:00", "19:30", "22:30"]
   comentarios: "a cada hora"

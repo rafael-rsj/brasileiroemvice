@@ -78,7 +78,8 @@ Responda SOMENTE em JSON:
  "subtitulo": "1 frase de contexto, máx. 110 caracteres",
  "estrelas": 1-5 (o quão bombástica é a notícia),
  "fonte_principal": "nome do veículo",
- "legenda": "legenda do post em PT-BR, 3 a 6 linhas curtas, com 2-4 emojis, terminando com uma PERGUNTA para gerar comentários",
+ "legenda": "legenda estilo portal que dá vontade de ler: 1ª linha = gancho forte em MAIÚSCULAS com 1 emoji (ex: '🚨 ROCKSTAR CONFIRMOU O QUE TODO MUNDO PEDIA'); depois linha em branco e 2 a 3 parágrafos curtos explicando o que se sabe; depois 3 a 4 tópicos curtos com emoji no começo (📍 ✅ ⚠️ 🎮 💰 etc.) com os pontos principais; termina com uma PERGUNTA que provoca opinião. Sem hashtags e sem pedir para seguir (isso é adicionado depois). Use quebras de linha \\n",
+ "comentario_tio": "comentário engraçado e curto do Tio Vice (mascote coroa gamer) reagindo à notícia, máx. 80 caracteres, sem inventar fatos",
  "hashtags": ["até 8 hashtags relevantes, sem as fixas"],
  "story_pergunta": "pergunta curta para enquete no story (máx. 40 caracteres)",
  "slide2_rotulo": "rótulo curto do dado principal, ex: 'Tempo para zerar:' ou 'O que muda:' (máx. 24 caracteres)",
@@ -155,9 +156,67 @@ Responda SOMENTE em JSON:
  "titulo": "título curto e chamativo tipo lista, ex: '7 regras para jogar online' (máx. 48 caracteres), com 1 palavra entre *asteriscos*",
  "publico": "homens|mulheres|todos|casais",
  "dicas": [{{"titulo": "dica em até 40 caracteres", "texto": "explicação em até 150 caracteres"}}] (de 5 a 8 itens),
- "legenda": "legenda curta e engraçada com 1 pergunta no final pedindo para comentar o número da dica favorita",
+ "legenda": "legenda que prende: 1ª linha gancho em MAIÚSCULAS com 1 emoji; linha em branco; 2 frases engraçadas de identificação; depois a lista das dicas resumidas, uma por linha, começando com 1️⃣ 2️⃣ 3️⃣...; termina pedindo para comentar o número da dica favorita e marcar alguém que precisa ler. Sem hashtags. Use quebras de linha \\n",
  "hashtags": ["até 8 hashtags"]
 }}"""
     msg = _client().messages.create(model=_model(cfg), max_tokens=4000, system=PERSONA.format(min_src=2),
                                     messages=[{"role": "user", "content": prompt}])
     return _json(_text(msg))
+
+
+GUIA_TIPOS = ("guia, lista, ranking, segredos, easter eggs, localização de itens/carros/animais, códigos e truques, "
+              "dicas de configuração, melhores carros/armas, atividades, personagens, comparações, curiosidades do mapa")
+
+
+def write_guide(items: list[dict], recent_titles: list[str]) -> dict | None:
+    """Carrossel estilo portal (guia/lista/segredos) a partir de uma matéria com texto completo.
+    Passo 1: escolhe a matéria que rende lista. Passo 2: lê a matéria e escreve os slides só com o que ela diz."""
+    from news import article_text
+    cands = [it for it in items if it.get("link") and "news.google." not in it["link"]][:40]
+    if not cands:
+        return None
+    cfg = load_cfg()
+    listing = "\n".join(f"[{i}] ({it['source']}) {it['title']} — {it['summary'][:200]}" for i, it in enumerate(cands))
+    msg = _client().messages.create(
+        model=_model(cfg), max_tokens=2000, system=PERSONA.format(min_src=2),
+        messages=[{"role": "user", "content": f"""Matérias recentes:
+{listing}
+
+Já postamos (não repita o assunto): {"; ".join(recent_titles[-25:]) or "nada"}
+
+Quais matérias rendem um CARROSSEL DE LISTA para fãs de GTA 6 ({GUIA_TIPOS})? Precisa ter pelo menos 4 itens
+concretos dentro do texto. Responda SOMENTE em JSON: {{"indices": [até 3 números, do melhor para o pior]}} ou {{"indices": []}}"""}])
+    idx = [i for i in _json(_text(msg)).get("indices", []) if 0 <= i < len(cands)]
+    for i in idx:
+        it = cands[i]
+        texto = article_text(it["link"])
+        if len(texto) < 800:
+            continue
+        prompt = f"""Matéria de {it['source']} ({it['link']}):
+TÍTULO: {it['title']}
+TEXTO:
+{texto[:9000]}
+
+Transforme esta matéria em um carrossel de Instagram estilo portal de games (lista/guia), em PT-BR, com nossas
+próprias palavras (não copie frases). Use SOMENTE informações que estão no texto. Se o texto não tiver pelo menos
+4 itens concretos, responda {{"skip": true}}.
+Responda SOMENTE em JSON:
+{{
+ "skip": false,
+ "titulo": "título da capa tipo lista/guia, chamativo, máx. 52 caracteres, com 1 a 2 palavras entre *asteriscos* (ex: '7 *segredos* de Vice City que pouca gente viu')",
+ "chamada": "selo curto da capa, ex: 'GUIA GTA 6', 'SEGREDOS', 'TOP 5', 'CÓDIGOS' (máx. 16 caracteres)",
+ "slides": [{{"titulo": "item em até 34 caracteres com 1 palavra entre *asteriscos*", "texto": "explicação útil em até 190 caracteres", "selo": "CONFIRMADO|RUMOR|DICA|SEGREDO|ATENCAO", "cena": "2 a 4 palavras do assunto do item para escolher a imagem, ex: 'jason carro praia'"}}] (4 a 8 itens),
+ "legenda": "legenda que prende: 1ª linha gancho em MAIÚSCULAS com 1 emoji; linha em branco; 1 parágrafo curto; depois os itens resumidos, um por linha, começando com 1️⃣ 2️⃣ 3️⃣...; termina com uma pergunta. Sem hashtags. Use \\n",
+ "hashtags": ["até 8 hashtags"],
+ "tema": "palavras do assunto geral para escolher a imagem da capa"
+}}
+Selo: CONFIRMADO só se a matéria diz que é oficial/confirmado pela Rockstar ou comprovado no jogo; RUMOR se a matéria trata como
+boato/vazamento/especulação; senão DICA ou SEGREDO."""
+        out = _json(_text(_client().messages.create(model=_model(cfg), max_tokens=4000, system=PERSONA.format(min_src=2),
+                                                     messages=[{"role": "user", "content": prompt}])))
+        if out.get("skip") or len(out.get("slides", [])) < 4:
+            continue
+        out["fonte"] = it["source"]
+        out["used"] = [it]
+        return out
+    return None
