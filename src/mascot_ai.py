@@ -69,7 +69,8 @@ def _model() -> str:
     def score(n):
         import re
         v = re.search(r"gemini-(\d+(?:\.\d+)?)", n)
-        return (float(v.group(1)) if v else 0, "pro" in n, "preview" not in n)
+        # qualidade primeiro: "pro" > normal > "lite"; depois a versão mais nova; estável antes de preview
+        return ("pro" in n, "lite" not in n, float(v.group(1)) if v else 0, "preview" not in n)
     best = sorted(ms, key=score)[-1]
     print("Modelo de imagem:", best, "| disponíveis:", ms)
     return best
