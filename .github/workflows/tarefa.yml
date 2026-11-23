@@ -1,0 +1,49 @@
+name: Tarefas (galeria, Tio Vice, atualização)
+on:
+  workflow_dispatch:
+    inputs:
+      comando:
+        description: "galeria = baixa as imagens oficiais | mascote = gera as poses do Tio Vice"
+        type: choice
+        options: [galeria, mascote]
+        default: galeria
+      refazer:
+        description: "Só para o mascote: refazer tudo do zero (1 = sim)"
+        default: "0"
+  push:
+    paths: ["patch/**"]
+permissions:
+  contents: write
+concurrency:
+  group: bot
+  cancel-in-progress: false
+jobs:
+  aplicar:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplica a atualização enviada em patch/
+        run: |
+          git config user.name brasileiroemvice-bot
+          git config user.email bot@users.noreply.github.com
+          for f in patch/*.b64; do base64 -d "$f" | gunzip | git apply --whitespace=nowarn -v; done
+          git rm -rq patch
+          git add -A
+          git commit -m "atualização do robô"
+          git push
+  tarefa:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt scipy
+      - run: python src/main.py ${{ inputs.comando }}
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          REFAZER: ${{ inputs.refazer }}
