@@ -1,5 +1,6 @@
-"""Coleta notícias de GTA 6 nas fontes, filtra pelo tema e remove o que já foi postado."""
+"""Coleta o que está acontecendo em Cascavel nas fontes, filtra o tema e tira o que já foi postado."""
 import hashlib
+import html as _h
 import json
 import re
 import time
@@ -12,11 +13,11 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / "state" / "seen.json"
-VEICULOS_CONFIAVEIS = ["rockstar", "take-two", "ign", "gamespot", "eurogamer", "pc gamer", "polygon", "kotaku",
-                       "the verge", "gamesradar", "bbc", "cnn", "reuters", "bloomberg", "associated press",
-                       "g1", "globo", "uol", "folha", "estadão", "estadao", "tecmundo", "the enemy",
-                       "voxel", "ign brasil", "techtudo", "variety", "forbes"]
-UA = {"User-Agent": "Mozilla/5.0 (BrasileiroEmVice bot; +https://instagram.com/brasileiroemvice)"}
+LOCAIS = ["cgn", "catve", "o paraná", "oparana", "radar bo", "tarobá", "taroba", "band b", "bandab", "rpc", "g1",
+          "prefeitura de cascavel", "cascavel.pr.gov", "câmara de cascavel", "aen", "agência estadual", "bem paraná",
+          "tribuna", "gazeta do povo", "massa news", "ric", "cbn cascavel"]
+UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36",
+      "Accept-Language": "pt-BR,pt;q=0.9"}
 
 
 def load_cfg():
@@ -32,7 +33,6 @@ def mark_seen(keys: list[str]):
     now = int(time.time())
     for k in keys:
         s[k] = now
-    # guarda só os últimos 30 dias
     s = {k: v for k, v in s.items() if now - v < 30 * 86400}
     STATE.parent.mkdir(exist_ok=True)
     STATE.write_text(json.dumps(s, indent=1))
@@ -44,32 +44,28 @@ def key_for(title: str) -> str:
     return hashlib.sha1(norm.encode()).hexdigest()[:16]
 
 
-def _og_image(url: str) -> str | None:
-    try:
-        r = requests.get(url, headers=UA, timeout=10)
-        m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)', r.text)
-        return m.group(1) if m else None
-    except Exception:
-        return None
+def _fetch_feed(url: str):
+    raw = requests.get(url, headers=UA, timeout=20).content
+    return feedparser.parse(raw)
 
 
-def collect() -> list[dict]:
+def collect(max_age_h: int | None = None) -> list[dict]:
     cfg = load_cfg()
     kws = [k.lower() for k in cfg["palavras_chave"]]
-    blocked = [b.lower() for b in cfg["seguranca"]["palavras_bloqueadas"]]
-    max_age = cfg["seguranca"]["idade_maxima_horas"] * 3600
+    blocked = [b.lower() for b in cfg.get("bloqueados", [])]
+    max_age = (max_age_h or cfg["seguranca"]["idade_maxima_horas"]) * 3600
     seen = _seen()
     items = []
     for src in cfg["fontes"]:
         try:
-            raw = requests.get(src["url"], headers=UA, timeout=15).content
-            feed = feedparser.parse(raw)
+            feed = _fetch_feed(src["url"])
         except Exception as e:
             print(f"[fonte falhou] {src['nome']}: {e}")
             continue
-        for e in feed.entries[:40]:
-            title = e.get("title", "").strip()
-            summary = re.sub("<[^>]+>", " ", e.get("summary", ""))[:600]
+        n = 0
+        for e in feed.entries[:50]:
+            title = _h.unescape(e.get("title", "")).strip()
+            summary = _h.unescape(re.sub("<[^>]+>", " ", e.get("summary", "")))[:700]
             text = f"{title} {summary}".lower()
             if not any(k in text for k in kws):
                 continue
@@ -78,19 +74,18 @@ def collect() -> list[dict]:
             ts = e.get("published_parsed") or e.get("updated_parsed")
             if ts and time.time() - time.mktime(ts) > max_age:
                 continue
-            outlet = (e.get("source") or {}).get("title", "") if hasattr(e, "get") else ""
-            trusted = src["confiavel"] or any(v in outlet.lower() for v in VEICULOS_CONFIAVEIS)
-            items.append({
-                "key": key_for(title),
-                "title": title,
-                "summary": summary.strip(),
-                "link": e.get("link"),
-                "source": outlet or src["nome"],
-                "trusted": trusted,
-                "published": datetime.fromtimestamp(time.mktime(ts), timezone.utc).isoformat() if ts else None,
-            })
-    fresh = [i for i in items if i["key"] not in seen]
-    print(f"{len(items)} itens do tema, {len(fresh)} novos")
+            outlet = (e.get("source") or {}).get("title", "")
+            trusted = src["confiavel"] or any(v in outlet.lower() for v in LOCAIS)
+            items.append({"key": key_for(title), "title": title, "summary": re.sub(r"\s+", " ", summary).strip(),
+                          "link": e.get("link"), "source": outlet or src["nome"], "trusted": trusted,
+                          "published": datetime.fromtimestamp(time.mktime(ts), timezone.utc).isoformat() if ts else None})
+            n += 1
+        print(f"[fonte] {src['nome']}: {len(feed.entries)} itens, {n} de Cascavel")
+    uniq = {}
+    for i in items:
+        uniq.setdefault(i["key"], i)
+    fresh = [i for i in uniq.values() if i["key"] not in seen]
+    print(f"{len(uniq)} itens do tema, {len(fresh)} novos")
     return fresh
 
 
@@ -107,23 +102,32 @@ def resolve(url: str) -> str:
     return url
 
 
+def _og_image(url: str) -> str | None:
+    try:
+        r = requests.get(url, headers=UA, timeout=12)
+        m = (re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)', r.text)
+             or re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', r.text))
+        return _h.unescape(m.group(1)) if m else None
+    except Exception:
+        return None
+
+
 def og_image(url: str) -> str | None:
-    """Foto da matéria (inclusive das que vêm pelo Google Notícias). Ignora logos e imagens genéricas."""
+    """Foto da matéria. Ignora logos e imagens genéricas (viram fundo feio na arte)."""
     url = resolve(url)
     if not url or "news.google." in url:
         return None
     img = _og_image(url)
-    if img and not any(b in img.lower() for b in ("google", "logo", "favicon", "placeholder", "default")):
+    if img and not any(b in img.lower() for b in ("google", "logo", "favicon", "placeholder", "default", "padrao", "avatar")):
         return img
     return None
 
 
 def article_text(url: str) -> str:
-    """Texto corrido da matéria (parágrafos e itens de lista), para os carrosséis de guia."""
-    import html as _h
+    """Texto corrido da matéria (parágrafos e listas)."""
     try:
         url = resolve(url)
-        r = requests.get(url, headers={**UA, "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0"}, timeout=15)
+        r = requests.get(url, headers=UA, timeout=15)
         page = re.sub(r"(?is)<(script|style|nav|footer|header|aside|form)[^>]*>.*?</\1>", " ", r.text)
         parts = re.findall(r"(?is)<(?:p|li|h2|h3)[^>]*>(.*?)</(?:p|li|h2|h3)>", page)
         txt = [_h.unescape(re.sub(r"<[^>]+>", "", x)).strip() for x in parts]

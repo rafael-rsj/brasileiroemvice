@@ -1,4 +1,4 @@
-"""Usa IA para escolher a melhor pauta, checar se é fato ou rumor e escrever manchete + legenda."""
+"""IA do guizo: escolhe a pauta de Cascavel, escreve título, legenda, roteiro do reel, agenda e respostas."""
 import json
 import os
 import re
@@ -7,16 +7,16 @@ import anthropic
 
 from news import load_cfg
 
-PERSONA = """Você é o editor do perfil de Instagram "Brasileiro em Vice" (@brasileiroemvice),
-página brasileira de notícias e curiosidades de GTA 6. Tom: animado, brasileiro, direto, com humor leve,
-sem exagero e SEM inventar fatos. Nunca afirme algo que as fontes não dizem.
-Regras:
-- Se só fontes não confiáveis (Reddit, agregadores) falam do assunto, ou se há menos de {min_src} fontes
-  confiáveis, a tag é RUMOR e o texto deixa claro que não é confirmado.
-- Se a fonte é a própria Rockstar/Take-Two, tag OFICIAL.
-- Nunca divulgue pirataria, cracks, downloads, links suspeitos ou spoilers pesados de história sem aviso.
-- Manchete curta (máx. 75 caracteres), em português, MAIÚSCULAS não são necessárias. Coloque entre *asteriscos*
-  1 a 3 palavras de destaque.
+PERSONA = """Você é o editor do "guizo" (@guizocascavel), perfil de Instagram sobre o que acontece em Cascavel (PR):
+eventos e o que fazer, novidades da cidade (lugares que abriram, obras entregues, coisas novas), alertas úteis
+(radar novo ou removido, interdição, obra, falta de água/luz, mudança no trânsito) e problemas da cidade.
+O nome vem do guizo da cascavel: o barulho que avisa. Tom: cascavelense, próximo, leve e direto, com uma pitada de
+humor quando cabe; sério e respeitoso quando o assunto é problema ou acidente.
+Regras de ouro:
+- NUNCA invente: data, horário, endereço, preço e números só se estiverem no texto das fontes.
+- Não expor pessoas: sem nomes de vítimas, suspeitos ou menores; nada de violência explícita, morte ou crime pesado.
+- Não fazer política partidária nem opinar sobre políticos.
+- Português do Brasil, frases curtas. Títulos sem caixa alta; use *asteriscos* em 1 a 3 palavras de destaque.
 """
 
 
@@ -28,23 +28,17 @@ _MODEL = None
 
 
 def _model(cfg) -> str:
-    """Usa o modelo do settings.yaml; se for 'auto' ou não existir mais, pega o Sonnet mais novo disponível."""
     global _MODEL
     if _MODEL:
         return _MODEL
     wanted = cfg["ia"].get("modelo", "auto")
     ids = [m.id for m in _client().models.list(limit=100).data]
-    if wanted in ids:
-        _MODEL = wanted
-    else:
-        sonnets = [i for i in ids if "sonnet" in i]
-        _MODEL = (sonnets or ids)[0]  # a lista vem do mais novo para o mais antigo
+    _MODEL = wanted if wanted in ids else ([i for i in ids if "sonnet" in i] or ids)[0]
     print("Modelo de IA:", _MODEL)
     return _MODEL
 
 
 def _text(msg) -> str:
-    """Junta só os blocos de texto da resposta (ignora blocos de raciocínio)."""
     return "".join(getattr(b, "text", "") for b in msg.content if getattr(b, "type", "") == "text")
 
 
@@ -53,197 +47,91 @@ def _json(text: str) -> dict:
     return json.loads(m.group(0))
 
 
+def _ask(prompt: str, max_tokens: int = 4000) -> dict:
+    cfg = load_cfg()
+    msg = _client().messages.create(model=_model(cfg), max_tokens=max_tokens, system=PERSONA,
+                                    messages=[{"role": "user", "content": prompt}])
+    return _json(_text(msg))
+
+
 def pick_and_write(items: list[dict], recent_titles: list[str]) -> dict | None:
-    """Recebe as notícias novas e devolve a pauta escolhida já escrita, ou None se nada vale post."""
+    """Escolhe a melhor pauta entre as notícias novas e devolve tudo escrito (ou None se nada vale post)."""
     if not items:
         return None
-    cfg = load_cfg()
-    listing = "\n".join(
-        f"[{i}] ({it['source']}{', confiável' if it['trusted'] else ''}) {it['title']} — {it['summary'][:300]}"
-        for i, it in enumerate(items[:40]))
-    prompt = f"""Notícias novas coletadas agora:
+    listing = "\n".join(f"[{i}] ({it['source']}) {it['title']} — {it['summary'][:280]}" for i, it in enumerate(items[:45]))
+    prompt = f"""Coisas novas sobre Cascavel coletadas agora:
 {listing}
 
 Já postamos recentemente (não repita o assunto):
-{chr(10).join('- ' + t for t in recent_titles[-15:]) or '- nada ainda'}
+{chr(10).join('- ' + t for t in recent_titles[-20:]) or '- nada ainda'}
 
-Escolha a pauta com MAIS potencial de engajamento para fãs brasileiros de GTA 6. Prioridade:
-1) descobertas, segredos, easter eggs, macetes, códigos, coisas que pouca gente sabe, recursos novos do jogo;
-2) novidades oficiais (atualização, conteúdo novo, GTA Online, data, trailer);
-3) curiosidades e comparações (realismo, GTA 6 vs 5, recordes, bugs engraçados, problemas que afetam o jogador);
-4) só por último notícias de negócio (vendas, ações, processos, executivos), e só se forem gigantes.
-Agrupe itens que falam do mesmo assunto para contar as fontes. Se nada for relevante, responda {{"skip": true}}.
+Escolha a pauta com MAIS potencial de engajamento para quem mora em Cascavel. Prioridade:
+1) NOVIDADE: lugar que abriu/vai abrir, obra entregue, serviço novo, coisa diferente na cidade;
+2) ALERTA: radar novo ou removido, interdição, obra que muda o trânsito, falta de água/luz, golpe circulando;
+3) EVENTO: show, feira, festival, evento gratuito, algo grande que vai movimentar a cidade;
+4) CIDADE: problema que afeta muita gente (buraco, fila, atraso de obra), curiosidade, conquista da cidade.
+Evite notícia policial comum e política. Agrupe itens do mesmo assunto. Se nada servir, responda {{"skip": true}}.
 Responda SOMENTE em JSON:
 {{
  "skip": false,
  "indices": [números dos itens usados],
- "tag": "OFICIAL|NOTICIA|RUMOR|CURIOSIDADE",
- "titulo": "manchete com *destaque*",
+ "tipo": "NOVIDADE|ALERTA|EVENTO|CIDADE",
+ "selo": "selo curto da arte, ex: 'NOVIDADE NA CIDADE', 'RADAR NOVO', 'ALERTA NO TRÂNSITO', 'VAI TER', 'DE GRAÇA', 'ATENÇÃO' (máx. 22 caracteres)",
+ "titulo": "título da arte com *destaque*, máx. 70 caracteres",
  "subtitulo": "1 frase de contexto, máx. 110 caracteres",
- "estrelas": 1-5 (o quão bombástica é a notícia),
+ "onde": "local/endereço se a fonte disser, senão vazio",
+ "quando": "data/horário se a fonte disser, senão vazio",
+ "dados": [{{"rotulo": "ex: LIMITE, PREÇO, HORÁRIO, A PARTIR DE", "valor": "ex: 50 km/h, grátis, 19h"}}] (0 a 2 itens, só com o que a fonte diz),
+ "slide2_texto": "3 a 4 frases explicando o que se sabe, útil para o morador (máx. 400 caracteres)",
  "fonte_principal": "nome do veículo",
- "legenda": "legenda estilo portal que dá vontade de ler: 1ª linha = gancho forte em MAIÚSCULAS com 1 emoji (ex: '🚨 ROCKSTAR CONFIRMOU O QUE TODO MUNDO PEDIA'); depois linha em branco e 2 a 3 parágrafos curtos explicando o que se sabe; depois 3 a 4 tópicos curtos com emoji no começo (📍 ✅ ⚠️ 🎮 💰 etc.) com os pontos principais; termina com uma PERGUNTA que provoca opinião. Sem hashtags e sem pedir para seguir (isso é adicionado depois). Use quebras de linha \\n",
- "comentario_tio": "comentário engraçado e curto do Tio Vice (mascote coroa gamer) reagindo à notícia, máx. 80 caracteres, sem inventar fatos",
- "hashtags": ["até 8 hashtags relevantes, sem as fixas"],
+ "legenda": "legenda: 1ª linha gancho curto com 1 emoji; linha em branco; 2 a 3 frases com o essencial; se tiver, linhas com 📍 local e 🗓 data; termina com uma pergunta que puxe comentário (ex: 'Você já passou por lá?'). Sem hashtags. Use \\\\n",
+ "hashtags": ["até 6 hashtags locais e do assunto"],
  "story_pergunta": "pergunta curta para enquete no story (máx. 40 caracteres)",
- "slide2_rotulo": "rótulo curto do dado principal, ex: 'Tempo para zerar:' ou 'O que muda:' (máx. 24 caracteres)",
- "slide2_valor": "o dado em destaque, ex: '82 horas' (máx. 18 caracteres, pode ficar vazio)",
- "slide2_texto": "2 a 4 frases explicando a notícia com contexto para o fã brasileiro, sem inventar nada (máx. 380 caracteres)",
- "reel_roteiro": "texto para narração do reel, 35 a 60 palavras, tom de plantão animado, termina pedindo para seguir a página; números por extenso",
- "imagem": "jogo|hardware|misto" (hardware = o assunto é console/PC/controle/peça, a capa deve mostrar o aparelho; misto = aparelho e jogo; jogo = cena do jogo),
- "reel_narrar": true ou false (true quando a notícia rende explicação falada; false quando é algo visual/rápido que fica melhor só com música)
+ "reel_roteiro": "narração de 35 a 55 palavras, tom de amigo contando a novidade, termina com 'segue o guizo pra saber tudo de Cascavel'; números por extenso",
+ "reel_narrar": true ou false
 }}"""
-    msg = _client().messages.create(
-        model=_model(cfg), max_tokens=max(4000, cfg["ia"]["max_tokens"]),
-        system=PERSONA.format(min_src=cfg["seguranca"]["fontes_minimas_para_fato"]),
-        messages=[{"role": "user", "content": prompt}])
-    data = _json(_text(msg))
+    data = _ask(prompt)
     if data.get("skip"):
         return None
-    used = [items[i] for i in data.get("indices", []) if 0 <= i < len(items)]
-    trusted = sum(1 for u in used if u["trusted"])
-    # trava de segurança independente da IA
-    min_src = cfg["seguranca"]["fontes_minimas_para_fato"]
-    downgraded = (data["tag"] == "NOTICIA" and trusted < min_src) or (data["tag"] == "OFICIAL" and trusted < 1)
-    if downgraded:
-        # reescreve para o texto não afirmar como fato o que a trava marcou como rumor
-        fix = _client().messages.create(
-            model=_model(cfg), max_tokens=4000,
-            system=PERSONA.format(min_src=min_src),
-            messages=[{"role": "user", "content": prompt},
-                      {"role": "assistant", "content": json.dumps(data, ensure_ascii=False)},
-                      {"role": "user", "content": "As fontes confiáveis não bastam para tratar isso como fato. "
-                       "Reescreva TUDO como RUMOR (tag RUMOR), sem dizer 'oficial' ou 'confirmado', deixando claro "
-                       "que ainda não há confirmação. Mesmo formato JSON."}])
-        data = _json(_text(fix))
-        data["tag"] = "RUMOR"
-    data["used"] = used
+    data["used"] = [items[i] for i in data.get("indices", []) if 0 <= i < len(items)]
+    if not data["used"]:
+        return None
+    return data
+
+
+def write_agenda(sources: list[dict], periodo: str, recent: list[str]) -> dict | None:
+    """Monta a agenda (fim de semana) a partir do texto das páginas de eventos."""
+    blocos = "\n\n".join(f"### {s['fonte']} ({s['url']})\n{s['texto']}" for s in sources)
+    prompt = f"""Textos copiados de sites de eventos e notícias de Cascavel (PR):
+{blocos[:42000]}
+
+Monte a agenda de "{periodo}" em Cascavel. Use SOMENTE eventos que estão nos textos acima, com data dentro desse
+período (ou em cartaz o período todo). Não invente data, horário, local nem preço: se não souber, deixe vazio.
+Prefira variedade: show, festa, teatro, feira, gastronomia, esporte, programa gratuito, coisa para família.
+Ignore eventos de outras cidades. Se houver menos de 3 eventos confiáveis, responda {{"skip": true}}.
+Responda SOMENTE em JSON:
+{{
+ "skip": false,
+ "titulo_capa": "ex: 'O que fazer em *Cascavel*' (máx. 34 caracteres)",
+ "eventos": [{{"nome": "nome do evento (máx. 46 caracteres)", "quando": "ex: 'sáb, 29/11 · 20h'", "onde": "local", "preco": "ex: 'grátis', 'a partir de R$ 40' ou vazio", "categoria": "SHOW|FESTA|TEATRO|FEIRA|GASTRONOMIA|ESPORTE|FAMÍLIA|CULTURA", "por_que_ir": "1 frase curta e animada (máx. 90 caracteres)", "fonte": "nome do site de onde veio"}}] (3 a 8 eventos, em ordem de data),
+ "legenda": "legenda: 1ª linha gancho com 1 emoji; linha em branco; lista dos eventos, um por linha, com emoji da categoria, nome, dia e local; termina com 'Marca quem vai com você 👇' e 'Tem evento? Manda no direct que a gente divulga'. Sem hashtags. Use \\\\n",
+ "hashtags": ["até 6 hashtags"]
+}}"""
+    data = _ask(prompt, 5000)
+    if data.get("skip") or len(data.get("eventos", [])) < 3:
+        return None
     return data
 
 
 def reply_comment(post_caption: str, comment: str) -> str | None:
-    """Gera uma resposta curta para um comentário no nosso post. None = não responder."""
     cfg = load_cfg()
     msg = _client().messages.create(
-        model=_model(cfg), max_tokens=2000,
-        system=PERSONA.format(min_src=2) + """
-Você está respondendo comentários no SEU post. Seja simpático, curto (máx. 140 caracteres), 1 emoji no máximo.
-Não responda (devolva exatamente SKIP) se o comentário for spam, ofensivo, propaganda, link, só emoji,
+        model=_model(cfg), max_tokens=1500,
+        system=PERSONA + """
+Você está respondendo comentários no SEU post. Seja simpático e cascavelense, curto (máx. 140 caracteres), 1 emoji no máximo.
+Se a pessoa sugerir pauta ou evento, agradeça e peça para mandar no direct.
+Não responda (devolva exatamente SKIP) se for spam, ofensa, briga política, propaganda, link, só emoji,
 ou se exigir uma informação que você não tem certeza.""",
         messages=[{"role": "user", "content": f"Legenda do post:\n{post_caption}\n\nComentário:\n{comment}"}])
     out = _text(msg).strip()
     return None if out.upper().startswith("SKIP") else out
-
-
-TEMAS_DICAS = [
-    # (tema, quem fala no balão do "outro lado": ela | ele | amigo | mae)
-    ("como a mulher deve agir quando o marido está jogando (manual irônico que ele vai mandar pra ela)", "ela"),
-    ("como o gamer deve agir quando a namorada quer atenção (manual irônico que ela vai mandar pra ele)", "ele"),
-    ("regras de convivência do casal em dia de lançamento de jogo", "ela"),
-    ("o que a mãe do gamer precisa entender (manual irônico)", "mae"),
-    ("como ser o amigo perfeito na jogatina online (manual irônico)", "amigo"),
-    ("sinais de que ela é a mulher da sua vida (versão gamer)", "ela"),
-    ("sinais de que ele é o homem da sua vida (versão gamer)", "ele"),
-    ("como pedir pra jogar 'só mais uma' sem arrumar briga", "ela"),
-    ("frases que todo gamer quer ouvir em casa", "ela"),
-    ("o que fazer quando seu parceiro(a) diz 'é rapidinho, só vou salvar'", "ele"),
-    ("etiqueta irônica do chat de voz", "amigo"),
-    ("como sobreviver ao fim de semana de lançamento de GTA 6 sem divórcio", "ela"),
-]
-
-
-def write_tips(recent_titles: list[str], seed: int) -> dict:
-    """Carrossel de dicas do Tio Vice: manual irônico e engraçado, feito pra pessoa mandar pro parceiro."""
-    cfg = load_cfg()
-    tema, quem = TEMAS_DICAS[seed % len(TEMAS_DICAS)]
-    quem_txt = {"ela": "a esposa/namorada", "ele": "o marido/namorado", "amigo": "o amigo da jogatina",
-                "mae": "a mãe"}[quem]
-    prompt = f"""Crie um carrossel viral de Instagram apresentado pelo Tio Vice, mascote da página: um coroa brasileiro
-gamer, tatuado, sarcástico e bonachão.
-Tema de hoje: {tema}.
-Já postamos (não repita): {"; ".join(recent_titles[-20:]) or "nada ainda"}.
-
-O TOM É O SEGREDO: ironia e humor de meme brasileiro. É um "manual" escrito do ponto de vista exagerado do gamer,
-com dicas curtas, no imperativo, absurdamente "óbvias" para ele. O objetivo é a pessoa ver, rir e MANDAR pro
-parceiro/amigo com um "aí, tá vendo? é assim" kkkk.
-Exemplo do tom (tema: como a mulher deve agir quando o marido está jogando):
-- "Leve um lanche pra ele" / texto: "Sem perguntar se ele tá com fome. Gamer sempre tá com fome. E sem pausar o jogo."
-- "Pergunte o que ele quer comer" / texto: "E aceite 'qualquer coisa' como resposta válida."
-- "Diga que está feliz em ver ele feliz" / texto: "Ver ele gritando com o controle às 2h da manhã é amor, na real."
-- "Peça atenção sem cobrar" / balão: "quando sobrar um tempinho aí me dá atenção 🥰"
-Crie dicas NOVAS nesse estilo (não repita os exemplos). O texto de apoio fecha a piada (ironia, exagero, uma
-alfinetada carinhosa). Em 2 a 4 dicas, inclua um "balao": uma fala curta e engraçada de {quem_txt}, que aparece como
-um bonequinho sorrindo no slide (ex: "joga aí amor, eu espero... 🙂", "é rapidinho né? 👀").
-Regras: humor carinhoso, ninguém é humilhado, sem machismo de verdade (a graça é o exagero do gamer, não diminuir
-ninguém), nada sexual. Português do Brasil bem informal.
-Responda SOMENTE em JSON:
-{{
- "titulo": "título chamativo de manual/lista, máx. 46 caracteres, com 1 a 2 palavras entre *asteriscos* (ex: 'Como agir quando ele está *jogando*')",
- "publico": "homens|mulheres|todos|casais",
- "dicas": [{{"titulo": "dica no imperativo, até 38 caracteres, 1 palavra entre *asteriscos*", "texto": "fecha a piada, até 120 caracteres", "balao": "fala opcional do bonequinho, até 60 caracteres, ou string vazia"}}] (de 5 a 7 itens),
- "legenda": "legenda: 1ª linha gancho em MAIÚSCULAS com 1 emoji (ex: '📢 MANDA PRO SEU MARIDO VER QUE VOCÊ É PERFEITA'); linha em branco; 1 frase irônica; a lista das dicas resumidas com 1️⃣ 2️⃣ 3️⃣...; termina com 'Marca quem precisa ler isso 👇'. Sem hashtags. Use \\n",
- "hashtags": ["até 8 hashtags"]
-}}"""
-    msg = _client().messages.create(model=_model(cfg), max_tokens=4000, system=PERSONA.format(min_src=2),
-                                    messages=[{"role": "user", "content": prompt}])
-    out = _json(_text(msg))
-    out["quem"] = quem
-    return out
-
-
-GUIA_TIPOS = ("guia, lista, ranking, segredos, easter eggs, localização de itens/carros/animais, códigos e truques, "
-              "dicas de configuração, melhores carros/armas, atividades, personagens, comparações, curiosidades do mapa")
-
-
-def write_guide(items: list[dict], recent_titles: list[str]) -> dict | None:
-    """Carrossel estilo portal (guia/lista/segredos) a partir de uma matéria com texto completo.
-    Passo 1: escolhe a matéria que rende lista. Passo 2: lê a matéria e escreve os slides só com o que ela diz."""
-    from news import article_text
-    cands = [it for it in items if it.get("link")][:40]
-    if not cands:
-        return None
-    cfg = load_cfg()
-    listing = "\n".join(f"[{i}] ({it['source']}) {it['title']} — {it['summary'][:200]}" for i, it in enumerate(cands))
-    msg = _client().messages.create(
-        model=_model(cfg), max_tokens=2000, system=PERSONA.format(min_src=2),
-        messages=[{"role": "user", "content": f"""Matérias recentes:
-{listing}
-
-Já postamos (não repita o assunto): {"; ".join(recent_titles[-25:]) or "nada"}
-
-Quais matérias rendem um CARROSSEL DE LISTA para fãs de GTA 6 ({GUIA_TIPOS})? Precisa ter pelo menos 4 itens
-concretos dentro do texto. Responda SOMENTE em JSON: {{"indices": [até 3 números, do melhor para o pior]}} ou {{"indices": []}}"""}])
-    idx = [i for i in _json(_text(msg)).get("indices", []) if 0 <= i < len(cands)]
-    for i in idx:
-        it = cands[i]
-        texto = article_text(it["link"])
-        if len(texto) < 800:
-            continue
-        prompt = f"""Matéria de {it['source']} ({it['link']}):
-TÍTULO: {it['title']}
-TEXTO:
-{texto[:9000]}
-
-Transforme esta matéria em um carrossel de Instagram estilo portal de games (lista/guia), em PT-BR, com nossas
-próprias palavras (não copie frases). Use SOMENTE informações que estão no texto. Se o texto não tiver pelo menos
-4 itens concretos, responda {{"skip": true}}.
-Responda SOMENTE em JSON:
-{{
- "skip": false,
- "titulo": "título da capa tipo lista/guia, chamativo, máx. 52 caracteres, com 1 a 2 palavras entre *asteriscos* (ex: '7 *segredos* de Vice City que pouca gente viu')",
- "chamada": "selo curto da capa, ex: 'GUIA GTA 6', 'SEGREDOS', 'TOP 5', 'CÓDIGOS' (máx. 16 caracteres)",
- "slides": [{{"titulo": "item em até 34 caracteres com 1 palavra entre *asteriscos*", "texto": "explicação útil em até 190 caracteres", "selo": "CONFIRMADO|RUMOR|DICA|SEGREDO|ATENCAO", "cena": "2 a 4 palavras do assunto do item para escolher a imagem, ex: 'jason carro praia'"}}] (4 a 8 itens),
- "legenda": "legenda que prende: 1ª linha gancho em MAIÚSCULAS com 1 emoji; linha em branco; 1 parágrafo curto; depois os itens resumidos, um por linha, começando com 1️⃣ 2️⃣ 3️⃣...; termina com uma pergunta. Sem hashtags. Use \\n",
- "hashtags": ["até 8 hashtags"],
- "tema": "palavras do assunto geral para escolher a imagem da capa"
-}}
-Selo: CONFIRMADO só se a matéria diz que é oficial/confirmado pela Rockstar ou comprovado no jogo; RUMOR se a matéria trata como
-boato/vazamento/especulação; senão DICA ou SEGREDO."""
-        out = _json(_text(_client().messages.create(model=_model(cfg), max_tokens=4000, system=PERSONA.format(min_src=2),
-                                                     messages=[{"role": "user", "content": prompt}])))
-        if out.get("skip") or len(out.get("slides", [])) < 4:
-            continue
-        out["fonte"] = it["source"]
-        out["used"] = [it]
-        return out
-    return None

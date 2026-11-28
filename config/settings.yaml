@@ -1,39 +1,53 @@
-# Brasileiro em Vice — configuração central
+# guizo — o que acontece em Cascavel (PR). Configuração central do robô.
+
+# false = robô pausado (só roda modo teste). Mude para true para começar a publicar.
+ativo: false
+
 perfil:
-  usuario: brasileiroemvice
-  nome: "Brasileiro em Vice"
-  hashtags_fixas: ["#GTA6", "#GTAVI", "#BrasileiroEmVice"]
+  usuario: guizocascavel
+  nome: "guizo"
+  cidade: "Cascavel"
+  hashtags_fixas: ["#Cascavel", "#CascavelPR", "#guizo"]
 
-# Modelo de IA que escreve manchetes, legendas e respostas
 ia:
-  modelo: "auto"
-  max_tokens: 1200
+  modelo: "auto"   # auto = Sonnet mais novo disponível na conta
+  max_tokens: 1500
 
-# Palavras que fazem uma notícia ser considerada do tema
-palavras_chave: ["gta 6", "gta vi", "grand theft auto vi", "grand theft auto 6", "leonida", "vice city", "rockstar"]
+# Uma notícia só entra se citar Cascavel (ou um lugar conhecido da cidade)
+palavras_chave: ["cascavel", "lago municipal", "show rural", "catuaí shopping", "jl shopping", "unioeste cascavel",
+                 "teatro municipal de cascavel", "parque tarquínio", "avenida brasil", "rua paraná", "transitar"]
 
-# Fontes. confiavel=true conta para confirmar notícia; reddit só serve como termômetro de rumor
+# Assuntos que a página NÃO publica (para não virar página policial nem de política)
+bloqueados: ["morre", "morte", "morto", "homicídio", "assassin", "estupro", "suicíd", "cadáver", "corpo encontrado",
+             "facada", "esfaque", "baleado", "tiroteio", "pedofil", "abuso sexual", "violência doméstica",
+             "candidato", "eleição", "partido", "deputado", "vereador critica"]
+
+# Fontes de notícia. confiavel=true: veículo local conhecido
 fontes:
-  - {nome: "Google Notícias BR", url: "https://news.google.com/rss/search?q=%22GTA+6%22+OR+%22GTA+VI%22&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: false}
-  - {nome: "Google News EN", url: "https://news.google.com/rss/search?q=%22GTA+6%22+OR+%22GTA+VI%22&hl=en-US&gl=US&ceid=US:en", confiavel: false}
-  - {nome: "IGN Brasil", url: "https://br.ign.com/feed.xml", confiavel: true}
-  - {nome: "TecMundo", url: "https://rss.tecmundo.com.br/feed", confiavel: true}
-  - {nome: "Eurogamer PT", url: "https://www.eurogamer.pt/feed", confiavel: true}
-  - {nome: "IGN", url: "https://feeds.feedburner.com/ign/games-all", confiavel: true}
-  - {nome: "GameSpot", url: "https://www.gamespot.com/feeds/news/", confiavel: true}
-  - {nome: "Eurogamer", url: "https://www.eurogamer.net/feed", confiavel: true}
-  - {nome: "PC Gamer", url: "https://www.pcgamer.com/rss/", confiavel: true}
-  - {nome: "Reddit r/GTA6", url: "https://www.reddit.com/r/GTA6/hot/.rss", confiavel: false}
+  - {nome: "CGN", url: "https://cgn.inf.br/feed", confiavel: true}
+  - {nome: "Catve", url: "https://catve.com/feed", confiavel: true}
+  - {nome: "O Paraná", url: "https://oparana.com.br/feed/", confiavel: true}
+  - {nome: "Radar BO", url: "https://radarbo.com.br/feed/", confiavel: true}
+  - {nome: "Tarobá", url: "https://taroba.com.br/feed", confiavel: true}
+  - {nome: "Band B", url: "https://www.bandab.com.br/feed/", confiavel: true}
+  - {nome: "Prefeitura (Google)", url: "https://news.google.com/rss/search?q=site:cascavel.pr.gov.br&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: true}
+  - {nome: "Google Cascavel", url: "https://news.google.com/rss/search?q=Cascavel+Paran%C3%A1+when:2d&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: false}
+  - {nome: "Google novidades", url: "https://news.google.com/rss/search?q=Cascavel+(inaugura+OR+abre+OR+novo+OR+nova+OR+inaugura%C3%A7%C3%A3o)+when:3d&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: false}
+  - {nome: "Google trânsito", url: "https://news.google.com/rss/search?q=Cascavel+(radar+OR+tr%C3%A2nsito+OR+interdi%C3%A7%C3%A3o+OR+obra+OR+bloqueio)+when:3d&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: false}
+  - {nome: "Google eventos", url: "https://news.google.com/rss/search?q=Cascavel+(show+OR+festival+OR+feira+OR+evento+OR+festa)+when:5d&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: false}
 
-# Regras de segurança do modo 100% automático
-seguranca:
-  fontes_minimas_para_fato: 2      # menos que isso = selo RUMOR
-  idade_maxima_horas: 36           # ignora notícia velha
-  marcar_ia: true                  # selo "Feito com IA" em imagem gerada
-  palavras_bloqueadas: ["download grátis", "crack", "apk", "pirata", "leak link", "mod menu"]
-
-# Horários (Brasília). Os crons em .github/workflows estão em UTC (Brasília + 3h)
+# Páginas de onde sai a agenda do fim de semana (lidas com navegador, o texto vai para a IA)
 agenda:
-  posts: ["12:00 notícia", "18:00 guia/lista (ou notícia)", "21:00 notícia"]
-  stories: ["09:00", "13:00", "16:00", "19:30", "22:30"]
-  comentarios: "a cada hora"
+  - {nome: "Sympla", url: "https://www.sympla.com.br/eventos/cascavel-pr"}
+  - {nome: "Rolê Agora", url: "https://www.roleagora.com.br/city/cascavel-pr"}
+  - {nome: "Vem Ver Cascavel", url: "https://vemvercascavel.com.br/"}
+  - {nome: "Blueticket", url: "https://www.blueticket.com.br/eventos/cascavel"}
+  - {nome: "Google eventos", url: "https://news.google.com/rss/search?q=Cascavel+(show+OR+festival+OR+feira+OR+evento)+when:7d&hl=pt-BR&gl=BR&ceid=BR:pt-419"}
+
+seguranca:
+  idade_maxima_horas: 30
+  fontes_minimas_para_fato: 1
+
+clima:   # Open-Meteo (grátis, sem chave)
+  lat: -24.9555
+  lon: -53.4552
