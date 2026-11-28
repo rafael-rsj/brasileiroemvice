@@ -3,8 +3,9 @@ name: guizo (Cascavel)
 on:
   schedule:
     - cron: "10 10 * * *"            # 07:10 story do clima
-    - cron: "40 14 * * *"            # 11:40 post
-    - cron: "10 16 * * *"            # 13:10 story
+    - cron: "10 11 * * *"            # 08:10 post (1º do dia)
+    - cron: "40 12 * * 0,6"          # 09:40 sáb/dom: stories "Hoje em Cascavel"
+    - cron: "10 16 * * *"            # 13:10 story do post da manhã
     - cron: "20 20 * * 0,1,2,3,5,6"  # 17:20 post
     - cron: "20 20 * * 4"            # 17:20 quinta: agenda do fim de semana
     - cron: "30 22 * * *"            # 19:30 reel
@@ -34,7 +35,8 @@ jobs:
         run: |
           case "${{ github.event.schedule }}" in
             "10 10 * * *") c=clima ;;
-            "40 14 * * *"|"20 20 * * 0,1,2,3,5,6") c=post ;;
+            "10 11 * * *"|"20 20 * * 0,1,2,3,5,6") c=post ;;
+            "40 12 * * 0,6") c=hoje ;;
             "20 20 * * 4") c=agenda ;;
             "30 22 * * *") c=reel ;;
             "10 16 * * *"|"10 0 * * *") c=story ;;
