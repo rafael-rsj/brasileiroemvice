@@ -12,6 +12,17 @@ Segue e ativa o sininho 🔔
 #Cascavel #CascavelPR #guizo #OesteDoParana"""
 
 
+LEGENDA_FB = """Chegou o Guizo, a página de quem mora em Cascavel 🐍
+
+Aqui você fica sabendo primeiro do que acontece na cidade: notícias que repercutiram, alertas de trânsito e de serviços, o que abriu de novo e os eventos do fim de semana.
+
+Viu alguma coisa acontecendo? Mande uma mensagem para a página que a gente divulga.
+
+Curta e siga a página para acompanhar 👍
+
+#Cascavel #CascavelPR #OesteDoParana"""
+
+
 def launch(h):
     bg = asset("fundo_cidade.jpg").as_uri()
     post=h==1350

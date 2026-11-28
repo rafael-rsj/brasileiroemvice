@@ -432,6 +432,26 @@ def cmd_lancamento():
     print("Story de lançamento:", ig.post_story(_url(story)))
 
 
+def cmd_fblancamento():
+    """Publica na Página do Facebook a arte de lançamento já usada no Instagram (uma vez só)."""
+    import facebook
+    from lancamento import LEGENDA_FB
+    feito = ROOT / "state" / "fb_lancamento.txt"
+    if feito.exists():
+        print("Lançamento já publicado no Facebook:", feito.read_text())
+        return
+    arte = sorted(ROOT.glob("media/*/*-lancamento/post_01.jpg"))[-1]
+    page = str(load_cfg().get("facebook_page_id", ""))
+    if DRY:
+        print("Publicaria no Facebook:", _url(arte), "\n", LEGENDA_FB)
+        return
+    pid = facebook.publicar(page, [_url(arte)], LEGENDA_FB)
+    print("Facebook lançamento:", pid)
+    feito.parent.mkdir(exist_ok=True)
+    feito.write_text(pid)
+    _git(["state"], "facebook: lançamento publicado")
+
+
 def cmd_fbteste():
     """Só confere se o robô consegue falar com a Página do Facebook (não publica nada)."""
     import facebook
@@ -459,7 +479,7 @@ if __name__ == "__main__":
     ig = [] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"]
     needs = {"post": ["ANTHROPIC_API_KEY"] + ig, "agenda": ["ANTHROPIC_API_KEY"] + ig, "reel": ig, "story": ig,
              "clima": ["ANTHROPIC_API_KEY"] + ig, "semana": ["ANTHROPIC_API_KEY"] + ig, "hoje": ["ANTHROPIC_API_KEY"] + ig, "plantao": ["ANTHROPIC_API_KEY"] + ig, "lancamento": ig, "comments": ["ANTHROPIC_API_KEY", "IG_ACCESS_TOKEN", "IG_USER_ID"]}
-    if not DRY and cmd not in ("fontes", "demo", "lancamento", "fbteste") and not load_cfg().get("ativo", False):
+    if not DRY and cmd not in ("fontes", "demo", "lancamento", "fbteste", "fblancamento") and not load_cfg().get("ativo", False):
         print("Robô pausado (ativo: false em config/settings.yaml). Nada foi publicado.")
         sys.exit(0)
     missing = [k for k in needs.get(cmd, []) if not os.environ.get(k)]
@@ -468,4 +488,4 @@ if __name__ == "__main__":
         sys.exit(0)
     # Feed não leva agenda (é temporária): o horário da quinta vira post normal; a agenda sai em stories na segunda.
     {"post": cmd_post, "agenda": cmd_post, "semana": cmd_semana, "hoje": cmd_hoje, "plantao": cmd_plantao, "reel": cmd_reel, "story": cmd_story, "clima": cmd_clima,
-     "comments": cmd_comments, "lancamento": cmd_lancamento, "fbteste": cmd_fbteste, "fontes": cmd_fontes, "demo": cmd_demo}[cmd]()
+     "comments": cmd_comments, "lancamento": cmd_lancamento, "fbteste": cmd_fbteste, "fblancamento": cmd_fblancamento, "fontes": cmd_fontes, "demo": cmd_demo}[cmd]()
