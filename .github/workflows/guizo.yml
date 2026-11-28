@@ -1,0 +1,59 @@
+name: guizo (Cascavel)
+# Horários em UTC (Brasília + 3h)
+on:
+  schedule:
+    - cron: "10 10 * * *"            # 07:10 story do clima
+    - cron: "40 14 * * *"            # 11:40 post
+    - cron: "10 16 * * *"            # 13:10 story
+    - cron: "20 20 * * 0,1,2,3,5,6"  # 17:20 post
+    - cron: "20 20 * * 4"            # 17:20 quinta: agenda do fim de semana
+    - cron: "30 22 * * *"            # 19:30 reel
+    - cron: "10 0 * * *"             # 21:10 story
+    - cron: "27 * * * *"             # de hora em hora: comentários
+  workflow_dispatch:
+    inputs:
+      comando:
+        description: "post | agenda | reel | story | clima | comments | fontes"
+        default: "post"
+      dry_run:
+        description: "Só gerar, sem publicar (1 = sim)"
+        default: "1"
+permissions:
+  contents: write
+concurrency:
+  group: bot
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Qual tarefa
+        id: cmd
+        run: |
+          case "${{ github.event.schedule }}" in
+            "10 10 * * *") c=clima ;;
+            "40 14 * * *"|"20 20 * * 0,1,2,3,5,6") c=post ;;
+            "20 20 * * 4") c=agenda ;;
+            "30 22 * * *") c=reel ;;
+            "10 16 * * *"|"10 0 * * *") c=story ;;
+            "27 * * * *") c=comments ;;
+            *) c="${{ inputs.comando }}" ;;
+          esac
+          echo "c=$c" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - if: steps.cmd.outputs.c != 'comments'
+        run: python -m playwright install --with-deps chromium
+      - if: steps.cmd.outputs.c == 'reel'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - run: python src/main.py ${{ steps.cmd.outputs.c }}
+        env:
+          DRY_RUN: ${{ inputs.dry_run || '0' }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
