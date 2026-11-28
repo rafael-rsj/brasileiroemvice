@@ -1,12 +1,1 @@
-Fim de semana chegando e Cascavel tem programa, sim 👀
-
-🛒 City Farm FAG 2026 · de sex, 27/11 a dom, 29/11
-🏃 12ª Corrida da Polícia Militar · sáb, 28/11
-🎭 Cartografia da Memória, com o Balé Teatro Guaíra · dom, 29/11 (e seg, 30/11)
-
-Mais detalhes em breve.
-
-Marca quem vai com você 👇
-Tem evento? Manda no direct que a gente divulga
-
-#Cascavel #CascavelPR #guizo #OqueFazerEmCascavel #FimDeSemana #AgendaCascavel #guizocascavel
+{"max": 24, "min": 18, "chuva": 100, "vento": 20, "descricao": "pancadas de chuva", "dica": "Dia de guarda-chuva na bolsa. Avenida alagada não perdoa 🌧", "dia": "sexta, 27 de nov"}
