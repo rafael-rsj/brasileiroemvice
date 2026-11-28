@@ -11,18 +11,25 @@ API = "https://graph.facebook.com/v23.0"
 
 
 def _page_token(page_id: str) -> str:
-    direto = os.environ.get("FB_PAGE_TOKEN", "").strip()
-    if direto:  # token da Página gerado no Graph API Explorer (secret FB_PAGE_TOKEN)
-        return direto
-    tok = os.environ["IG_ACCESS_TOKEN"].strip()
-    r = requests.get(f"{API}/{page_id}", params={"fields": "access_token", "access_token": tok}, timeout=30).json()
-    if "access_token" in r:
-        return r["access_token"]
-    r = requests.get(f"{API}/me/accounts", params={"access_token": tok, "limit": 50}, timeout=30).json()
-    for p in r.get("data", []):
-        if p.get("id") == page_id:
-            return p["access_token"]
-    raise RuntimeError(f"sem token da Página: {r}")
+    """Devolve o token da Página. Aceita no FB_PAGE_TOKEN tanto o token da Página quanto um token de usuário
+    (nesse caso troca pelo da Página), e cai no IG_ACCESS_TOKEN se precisar."""
+    candidatos = [os.environ.get("FB_PAGE_TOKEN", "").strip(), os.environ.get("IG_ACCESS_TOKEN", "").strip()]
+    erros = []
+    for tok in [c for c in candidatos if c]:
+        me = requests.get(f"{API}/me", params={"fields": "id,name", "access_token": tok}, timeout=30).json()
+        if me.get("id") == page_id:  # já é o token da Página
+            return tok
+        r = requests.get(f"{API}/{page_id}", params={"fields": "access_token", "access_token": tok}, timeout=30).json()
+        if "access_token" in r:
+            return r["access_token"]
+        contas = requests.get(f"{API}/me/accounts", params={"access_token": tok, "limit": 50}, timeout=30).json()
+        for p in contas.get("data", []):
+            if p.get("id") == page_id or "guizo" in p.get("name", "").lower():
+                if p.get("id") != page_id:
+                    print("Aviso: id da Página na API é", p.get("id"), "e não", page_id)
+                return p["access_token"]
+        erros.append({"me": me, "pagina": r, "contas": contas})
+    raise RuntimeError(f"sem token da Página: {erros}")
 
 
 def publicar(page_id: str, image_urls: list[str], texto: str) -> str:
