@@ -1,7 +1,7 @@
 # guizo — o que acontece em Cascavel (PR). Configuração central do robô.
 
 # false = robô pausado (só roda modo teste). Mude para true para começar a publicar.
-ativo: false
+ativo: true
 
 perfil:
   usuario: guizocascavel
