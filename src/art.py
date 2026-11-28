@@ -150,8 +150,9 @@ def cover_text(d, swipe=False, h=1350):
     info = " · ".join(x for x in [d.get("onde"), d.get("quando")] if x)
     bg = asset("fundo_cidade.jpg")
     if bg:
-        return page(f'''<img class="abs" src="{bg.as_uri()}" style="left:0;top:0;width:100%;height:{1350 if h == 1350 else 1920}px;object-fit:cover;object-position:top">
-      <div class="abs" style="left:0;right:0;bottom:0;height:{55 if h == 1350 else 50}%;background:linear-gradient(180deg,rgba(17,17,17,0),#111 30%)"></div>
+        return page(f'''<div class="abs" style="inset:0;background:{K}"></div>
+      <img class="abs" src="{bg.as_uri()}" style="left:0;top:{-170 if h == 1350 else 0}px;width:1080px;height:1350px">
+      <div class="abs" style="left:0;right:0;top:{440 if h == 1350 else 750}px;height:260px;background:linear-gradient(180deg,rgba(17,17,17,0),#111)"></div>
       <div class="abs" style="left:56px;top:52px">{seal()}</div>
       <div class="abs" style="left:56px;right:56px;bottom:{150 if h == 1350 else 380}px">
         <span class="tag" style="background:{Y};color:{K}">{esc(d.get("selo", "NOVIDADE"))}</span>
@@ -184,7 +185,7 @@ def detail(d):
 def cta(n=None, total=None):
     """Último slide: chama o seguidor a mandar pauta (é assim que a página cresce)."""
     return page(f'''<div class="abs" style="inset:0;background:{K}"></div>
-      <div class="abs" style="left:0;right:0;top:{60 if asset("mascote_apontando.png") else 120}px;display:flex;justify-content:center">{mascot("mascote_atencao", 360) or guizo(170)}</div>
+      <div class="abs" style="left:0;right:0;top:120px;display:flex;justify-content:center">{guizo(170)}</div>
       <h1 class="abs" style="left:56px;right:56px;top:450px;text-align:center;font-size:96px">Viu algo <span style="color:{Y}">acontecendo</span> em Cascavel?</h1>
       <div class="abs" style="left:80px;right:80px;top:790px;text-align:center;font-weight:700;font-size:40px;line-height:1.4;color:#ddd">
         Manda no direct ou marca o <span style="color:{Y}">{HANDLE}</span> no seu story que a gente espalha 📣</div>
@@ -209,8 +210,7 @@ def agenda_cover(a, periodo):
       <div class="abs" style="right:56px;top:66px;font-weight:800;font-size:30px;letter-spacing:3px;color:{Y}">{esc(periodo.upper())}</div>
       <h1 class="abs" style="left:56px;right:56px;top:200px;font-size:172px;color:#fff">O QUE<br>FAZER EM<br><span style="background:{Y};color:{K};padding:0 16px">CASCAVEL</span></h1>
       <div class="abs" style="left:56px;top:800px;font-weight:800;font-size:50px;color:#fff">{len(a["eventos"])} rolês pra você 👇</div>
-      <div class="abs" style="left:56px;right:{460 if asset("mascote_festa.png") else 56}px;bottom:130px;display:flex;gap:16px;flex-wrap:wrap">{tags}</div>
-      <div class="abs" style="right:20px;bottom:90px">{mascot("mascote_festa", 420)}</div>
+      <div class="abs" style="left:56px;right:56px;bottom:130px;display:flex;gap:16px;flex-wrap:wrap">{tags}</div>
       <div class="handle">{HANDLE}</div><div class="swipe" style="color:{Y}">ARRASTA →</div>''')
 
 
