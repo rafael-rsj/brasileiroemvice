@@ -331,7 +331,14 @@ def cmd_comments():
                 time.sleep(20)
             print(f"@{c.get('username')}: {c.get('text')!r} -> {txt!r}")
     _save(REPLIED, list(done)[-5000:])
-    _git(["state"], "comentários")
+    import radar
+    if radar.ativo():
+        for f in (radar.inbox, radar.radar):
+            try:
+                print(f.__name__, "->", f())
+            except Exception as e:
+                print(f.__name__, "falhou:", e)
+    _git(["state", "config/pautas.yaml"], "comentários e telegram")
 
 
 # ------------------------------------------------------------------ testes

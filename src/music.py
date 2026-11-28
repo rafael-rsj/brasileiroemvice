@@ -1,4 +1,4 @@
-"""Trilha synthwave original gerada por código (sem direitos autorais de terceiros).
+"""Trilha pop original gerada por código (sem direitos autorais de terceiros).
 
 make_track(path, seconds, seed) grava um .wav estéreo 48 kHz no clima de Vice City:
 pad de acordes, baixo pulsando, arpejo e bateria eletrônica. O seed muda tom, andamento e timbre.
@@ -9,6 +9,9 @@ import numpy as np
 
 SR = 48000
 PROGRESSIONS = [
+    [(0, 4, 7), (7, 11, 14), (9, 12, 16), (5, 9, 12)],     # I  V  vi IV (pop)
+    [(9, 12, 16), (5, 9, 12), (0, 4, 7), (7, 11, 14)],     # vi IV I  V
+    [(0, 4, 7), (5, 9, 12), (7, 11, 14), (5, 9, 12)],      # I  IV V  IV
     [(0, 3, 7), (-4, 0, 3), (3, 7, 10), (-2, 2, 5)],    # i  VI III VII
     [(0, 3, 7), (5, 8, 12), (-4, 0, 3), (-2, 2, 5)],    # i  iv VI VII
     [(0, 3, 7), (-2, 2, 5), (-4, 0, 3), (-5, -1, 2)],   # i  VII VI V
@@ -47,9 +50,9 @@ def _lowpass(x, k):
 
 def make_track(path, seconds=24.0, seed=0):
     rng = np.random.default_rng(seed)
-    bpm = float(rng.choice([92, 98, 104, 110]))
+    bpm = float(rng.choice([100, 104, 118, 124]))
     base = 110.0 * 2 ** (int(rng.integers(-3, 4)) / 12)  # tom
-    prog = PROGRESSIONS[seed % len(PROGRESSIONS)]
+    prog = PROGRESSIONS[seed % 3]  # só as alegres (pop); as menores eram do clima Vice City
     beat = 60 / bpm
     bar = 4 * beat
     n = int(seconds * SR)

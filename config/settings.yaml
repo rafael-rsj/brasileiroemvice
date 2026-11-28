@@ -54,3 +54,9 @@ seguranca:
 clima:   # Open-Meteo (grátis, sem chave)
   lat: -24.9555
   lon: -53.4552
+
+# Radar de posts em alta (comentários prontos no Telegram). Só funciona com perfis comerciais/criadores.
+radar_limite_dia: 25
+radar_perfis: [noticiascascavel, cascavelemfatos, rolezandocascavel, cascavel_prefa, tour.cascavel, cascavel.spotted,
+               catuaipalladium, festvalcascavel, baladascascavelense, frajolacascaveloficial, magnata.boteco,
+               esquentapubcascavel, comancheamericanpub, likebaroficial, terrazzorooftopbar, cinelasercascavel]

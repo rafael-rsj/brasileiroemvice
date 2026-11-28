@@ -76,6 +76,8 @@ Escolha a pauta com MAIS potencial de a pessoa parar, comentar, mandar pra algu�
 4) ALERTA: mudança que afeta muita gente agora (bloqueio grande, falta de água/luz, golpe circulando, mudança no trânsito);
 5) CIDADE: problema ou conquista da cidade que interessa a muita gente;
 6) EVENTO: só se for muito grande (show de artista conhecido, festival que para a cidade).
+Quando couber, use no título um formato que está bombando: "POV: ...", "3 coisas que ...", "Antes e depois: ...",
+"Você sabia que ...", "Cascavel acordou com ...". Sem forçar: só se combinar com o assunto.
 Radar só entra se for algo grande (vários radares novos, radar que todo mundo reclama); radar isolado não vale post.
 Evite notícia sem impacto, nota oficial burocrática e política. Agrupe itens do mesmo assunto.
 Se nada servir, responda {{"skip": true}}.
@@ -164,3 +166,44 @@ ou se exigir uma informação que você não tem certeza.""",
         messages=[{"role": "user", "content": f"Legenda do post:\n{post_caption}\n\nComentário:\n{comment}"}])
     out = _text(msg).strip()
     return None if out.upper().startswith("SKIP") else out
+
+
+def avaliar_pauta(material: str) -> dict:
+    """Pauta mandada pelo dono (link, reel, texto): decide se vale post e resume com palavras próprias."""
+    return _ask(f"""O dono da página mandou esta possível pauta (pode ser link de matéria, post ou reel de outro perfil, ou texto):
+{material[:6000]}
+
+Decida se vale post no guizo (Cascavel-PR). Vale se for de Cascavel ou região, recente e interessante
+(bombou, novidade, evento bom, caso que repercutiu, informação útil). Não vale se for velho, de outra cidade,
+boato sem fonte, propaganda pura ou já muito batido.
+Reescreva com palavras próprias, sem copiar frases do original.
+Responda SOMENTE em JSON: {{"vale": true/false, "motivo": "curto, se não vale", "titulo": "título curto do assunto",
+"resumo": "3 a 5 frases com os fatos (quem, o quê, onde, quando), sem inventar nada", "fonte": "veículo ou perfil de origem, se souber"}}""", 1500)
+
+
+def comentario_para(perfil: str, legenda: str, img_url: str | None) -> str | None:
+    """Comentário do guizo em post de outro perfil (o dono cola na mão). None = melhor não comentar."""
+    cfg = load_cfg()
+    prompt = f"""Post recente do perfil @{perfil} (Cascavel-PR). Legenda:
+{(legenda or '(sem legenda)')[:1500]}
+
+Escreva o comentário que o perfil guizo (página sobre Cascavel) vai deixar nesse post.
+Regras:
+- Curto (máx. 90 caracteres), natural, como gente da cidade falando. Nada de "segue a gente", link ou propaganda.
+- Rolê, comida, lugar, show, novidade: descontraído e divertido, que faça sentido com o post.
+- Coisa fofa (bicho, criança, homenagem): carinhoso.
+- Natal: pode usar emoji de natal 🎄✨🎅.
+- Notícia tensa (acidente, crime, morte, tragédia, doença): responda SÓ com 1 ou 2 destes emojis: 😢 😮 😨 🥀 🙏 — nenhuma palavra.
+- Política, briga, sorteio, post patrocinado ou assunto que você não entendeu: responda exatamente SKIP.
+Responda só com o comentário (ou SKIP)."""
+    content = [{"type": "text", "text": prompt}]
+    if img_url:
+        content.insert(0, {"type": "image", "source": {"type": "url", "url": img_url}})
+    try:
+        msg = _client().messages.create(model=_model(cfg), max_tokens=300, system=PERSONA,
+                                        messages=[{"role": "user", "content": content}])
+    except Exception:
+        msg = _client().messages.create(model=_model(cfg), max_tokens=300, system=PERSONA,
+                                        messages=[{"role": "user", "content": prompt}])
+    out = _text(msg).strip().strip('"')
+    return None if not out or out.upper().startswith("SKIP") else out

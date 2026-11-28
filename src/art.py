@@ -321,13 +321,24 @@ def agenda_item(e, i, total):
 
 # ---------------------------------------------------------------- story
 def story_from(kind, d, img=None, credit=""):
-    """Versão 9:16 do post para o story, com chamada para o feed."""
-    fn = {"photo": lambda: cover_photo(d, img, credit, h=1920), "alert": lambda: cover_alert(d, h=1920),
-          "text": lambda: cover_text(d, h=1920)}[kind]
-    body = fn()
-    banner = (f'<div class="abs" style="left:0;right:0;bottom:120px;display:flex;justify-content:center">'
-              f'<span class="tag" style="background:{Y};color:{K};font-size:32px">POST NOVO NO FEED <b style="font-size:42px;line-height:0;vertical-align:-3px">↑</b></span></div>')
-    return body.replace("</body>", banner + "</body>")
+    """Story que chama para o post: NÃO repete a capa do feed. Foto em cartão inclinado + gancho + seta."""
+    t = d["titulo"]
+    gancho = d.get("story_pergunta") or d.get("subtitulo") or ""
+    foto = (f'<img src="{esc(img)}" style="width:100%;height:100%;object-fit:cover;display:block">' if img else
+            f'<div style="width:100%;height:100%;background:{Y};display:flex;align-items:center;justify-content:center">{guizo(220, K)}</div>')
+    return page(f'''<div class="abs" style="inset:0;background:{K}"></div>{texture(t + "story", 1080, 1920)}
+      <div class="abs" style="left:56px;top:130px">{seal()}</div>
+      <div class="abs" style="left:110px;right:110px;top:300px;height:760px;transform:rotate(-3deg);border-radius:28px;overflow:hidden;
+           border:10px solid #fff;box-shadow:0 30px 60px rgba(0,0,0,.6)">{foto}</div>
+      <div class="abs" style="right:90px;top:270px;transform:rotate(6deg)"><span class="tag" style="background:{Y};color:{K};font-size:30px">POST NOVO</span></div>
+      <div class="abs" style="left:56px;right:56px;top:1130px">
+        {cat_tag(d, 30)}
+        <h1 style="font-size:{fs(t, [(34, 96), (52, 84), (999, 72)])}px;margin-top:24px">{mark(t)}</h1>
+        {f'<div style="font-weight:700;font-size:40px;color:#cfcfcf;margin-top:26px;line-height:1.3">{esc(gancho)}</div>' if gancho else ''}
+      </div>
+      <div class="abs" style="left:0;right:0;bottom:150px;display:flex;justify-content:center">
+        <span class="tag" style="background:{Y};color:{K};font-size:34px;padding:16px 30px">VÊ NO FEED <b style="font-size:44px;line-height:0;vertical-align:-3px">↑</b></span></div>
+      {f'<div class="abs" style="left:56px;bottom:100px;font-size:16px;color:#666">{esc(credit)}</div>' if credit else ''}''', h=1920)
 
 
 def _onde(e):
