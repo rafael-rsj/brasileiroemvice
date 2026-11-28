@@ -326,7 +326,7 @@ def story_from(kind, d, img=None, credit=""):
           "text": lambda: cover_text(d, h=1920)}[kind]
     body = fn()
     banner = (f'<div class="abs" style="left:0;right:0;bottom:120px;display:flex;justify-content:center">'
-              f'<span class="tag" style="background:{Y};color:{K};font-size:32px">👆 POST NOVO NO FEED</span></div>')
+              f'<span class="tag" style="background:{Y};color:{K};font-size:32px">POST NOVO NO FEED <b style="font-size:42px;line-height:0;vertical-align:-3px">↑</b></span></div>')
     return body.replace("</body>", banner + "</body>")
 
 

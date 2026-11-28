@@ -10,7 +10,7 @@ from news import _fetch_feed, load_cfg
 # Fotos dos cards de evento (banner da divulgação), com o texto do card para a IA casar com o evento certo
 IMGS_JS = """() => [...document.images].filter(i => (i.naturalWidth || i.width) >= 300)
   .map(i => { const a = i.closest('a') || i.parentElement; let src = i.currentSrc || i.src;
-    return {src, t: ((i.alt || '') + ' ' + (a ? a.innerText : '')).replace(/\\s+/g, ' ').trim().slice(0, 90)} })
+    return {src, link: (i.closest('a') || {}).href || '', t: ((i.alt || '') + ' ' + (a ? a.innerText : '')).replace(/\\s+/g, ' ').trim().slice(0, 90)} })
   .filter(x => x.src.startsWith('http') && !/logo|icon|avatar|sprite|banner-app/i.test(x.src))"""
 
 
@@ -27,6 +27,8 @@ def read_sources(max_chars: int = 9000) -> list[dict]:
                 if "news.google." in src["url"]:
                     feed = _fetch_feed(src["url"])
                     txt = "\n".join(f"- {e.get('title', '')}" for e in feed.entries[:40])
+                    # cada notícia vira um "card": a foto da matéria (quase sempre do próprio evento) é buscada depois
+                    imgs = [{"src": "", "link": e.get("link", ""), "t": e.get("title", "")[:90]} for e in feed.entries[:40]]
                 else:
                     pg.goto(src["url"], timeout=45000, wait_until="domcontentloaded")
                     pg.wait_for_timeout(4000)
@@ -39,7 +41,7 @@ def read_sources(max_chars: int = 9000) -> list[dict]:
                 print(f"[agenda] {src['nome']}: {len(txt)} caracteres")
                 if len(txt) > 200:
                     out.append({"fonte": src["nome"], "url": src["url"], "texto": txt,
-                                "imagens": imgs[:40] if "news.google." not in src["url"] else []})
+                                "imagens": imgs[:40]})
             except Exception as e:
                 print(f"[agenda falhou] {src['nome']}: {e}")
         b.close()
