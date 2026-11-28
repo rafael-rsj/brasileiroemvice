@@ -11,6 +11,9 @@ API = "https://graph.facebook.com/v23.0"
 
 
 def _page_token(page_id: str) -> str:
+    direto = os.environ.get("FB_PAGE_TOKEN", "").strip()
+    if direto:  # token da Página gerado no Graph API Explorer (secret FB_PAGE_TOKEN)
+        return direto
     tok = os.environ["IG_ACCESS_TOKEN"].strip()
     r = requests.get(f"{API}/{page_id}", params={"fields": "access_token", "access_token": tok}, timeout=30).json()
     if "access_token" in r:
