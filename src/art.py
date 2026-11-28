@@ -24,6 +24,76 @@ GUIZO = """<svg width="{w}" height="{h}" viewBox="0 0 200 260" style="color:{c};
 <path d="M100 176C124 176 136 188 136 203C136 219 124 230 100 244C76 230 64 219 64 203C64 188 76 176 100 176Z"/></g></svg>"""
 
 
+# ---------------------------------------------------------------- textura de fundo
+# Curvas do guizo bem grandes e discretas no fundo escuro. São 8 composições diferentes que se alternam
+# (com giro e posição variando), então um post não fica igual ao do lado e o padrão só repete depois de um tempo.
+SEG = ["M100 20C140 20 160 34 160 54C160 74 140 84 100 84C60 84 40 74 40 54C40 34 60 20 100 20Z",
+       "M100 74C136 74 154 88 154 108C154 128 136 138 100 138C64 138 46 128 46 108C46 88 64 74 100 74Z",
+       "M100 128C130 128 146 141 146 159C146 177 130 186 100 186C70 186 54 177 54 159C54 141 70 128 100 128Z",
+       "M100 176C124 176 136 188 136 203C136 219 124 230 100 244C76 230 64 219 64 203C64 188 76 176 100 176Z"]
+ARCS = ["M178 30C196 50 196 80 178 100", "M196 14C224 46 224 96 196 128",
+        "M22 30C4 50 4 80 22 100", "M4 14C-24 46 -24 96 4 128"]
+_VAR = {"n": None}
+
+
+def set_variant(n):
+    """main.py chama com o número do post, para a textura ir mudando em sequência."""
+    _VAR["n"] = n
+
+
+def _seed(key):
+    if _VAR["n"] is not None:
+        return _VAR["n"]
+    return sum(ord(ch) * (i + 1) for i, ch in enumerate(str(key))) % 997
+
+
+def _rattle(x, y, size, rot, stroke, op, sw=3, fill="none", arcs=False):
+    sc = size / 260
+    paths = "".join(f'<path d="{d}"/>' for d in SEG)
+    a = "".join(f'<path d="{d}"/>' for d in ARCS) if arcs else ""
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({sc:.3f}) translate(-100 -130)" '
+            f'stroke="{stroke}" stroke-opacity="{op}" fill="{fill}" stroke-width="{sw / sc:.1f}" '
+            f'stroke-linecap="round" stroke-linejoin="round">{paths}{a}</g>')
+
+
+def texture(key="", w=1080, h=1350, tone="dark"):
+    n = _seed(key)
+    # stories (1920) usam as 8 composições; no feed só as que não brigam com o texto
+    v = n % 8 if h >= 1900 else [1, 2, 3, 5, 7, 0][n % 6]
+    j = (n // 8) % 5 - 2  # pequeno giro extra, muda a cada volta completa
+    dark = tone == "dark"
+    line = Y if dark else K
+    g = ""
+    if v == 0:    # guizo amarelo sólido gigante, cortado no canto
+        g = _rattle(w * 1.06, h * 1.02, h * .5, -18 + j * 3, K, 1, 10, fill=Y)
+    elif v == 1:  # anéis grossos saindo do canto de baixo
+        for i in range(6):
+            r = 180 + i * 150
+            g += (f'<ellipse cx="{w * .95}" cy="{h * 1.02}" rx="{r * 1.5}" ry="{r}" fill="none" stroke="{line}" '
+                  f'stroke-opacity="{.30 - i * .04:.2f}" stroke-width="{12 - i}" transform="rotate({-12 + j * 3} {w * .95} {h * 1.02})"/>')
+    elif v == 2:  # contorno gigante e grosso pela direita
+        g = _rattle(w * .9, h * .72, h * .95, -14 + j * 3, line, .22, 9)
+    elif v == 3:  # padrão diagonal de guizos pequenos
+        for yy in range(-1, int(h / 230) + 2):
+            for xx in range(-1, int(w / 230) + 2):
+                g += _rattle(xx * 230 + (115 if yy % 2 else 0), yy * 230, 120, -14 + j * 4, line, .09, 3)
+    elif v == 4:  # faixa amarela diagonal com guizos recortados
+        g = (f'<g transform="rotate({-16 + j * 2} {w / 2} {h * .78 + 75})"><rect x="{-w}" y="{h * .78}" width="{w * 3}" height="150" fill="{Y}"/>'
+             + "".join(_rattle(-200 + i * 150, h * .78 + 75, 100, 90, K, .9, 6) for i in range(int(w * 2.4 / 150))) + '</g>')
+    elif v == 5:  # guizo tom sobre tom com as ondas de vibração em amarelo
+        g = (_rattle(w * .9, h * .9, h * .48, -20 + j * 2, "#2a2a2a" if dark else "#d9d4c8", 1, 8, fill="#1b1b1b" if dark else "#ebe6da")
+             + f'<g transform="translate({w * .9} {h * .9}) rotate({-20 + j * 2}) scale({h * .48 / 260:.3f}) translate(-100 -130)" fill="none" '
+             f'stroke="{Y}" stroke-width="{8 / (h * .48 / 260):.1f}" stroke-linecap="round">' + "".join(f'<path d="{d}"/>' for d in ARCS) + '</g>')
+    elif v == 6:  # ondas amarelas empilhadas no pé
+        for i in range(4):
+            yy = h - 14 - i * 34
+            g += (f'<path d="M-20 {yy} Q {w * .25} {yy - 40} {w * .5} {yy} T {w + 20} {yy}" fill="none" stroke="{Y}" '
+                  f'stroke-opacity="{.9 - i * .2:.2f}" stroke-width="{12 - i * 2.5}" stroke-linecap="round"/>')
+    else:         # guizo deitado atravessando o fundo, contorno grosso
+        g = _rattle(w * .5, h * .9, w * 1.25, 76 + j * 2, line, .2, 9)
+    return (f'<svg class="abs" style="left:0;top:0;pointer-events:none" width="{w}" height="{h}" '
+            f'viewBox="0 0 {w} {h}">{g}</svg>')
+
 def _font() -> Path:
     f = FONTS / "Montserrat.ttf"
     if not f.exists():
@@ -155,7 +225,7 @@ def cover_alert(d, swipe=False, h=1350):
     elif d.get("quando"):
         rows += f'<div class="lbl">🗓 QUANDO</div><div class="val">{esc(d["quando"])}</div>'
     top = 0 if h == 1350 else 120
-    return page(f'''<div class="zebra" style="top:{top}px"></div>
+    return page(f'''{texture(t, 1080, h)}<div class="zebra" style="top:{top}px"></div>
       <div class="abs" style="left:56px;top:{top + 170}px">{cat_tag(d)}</div>
       <h1 class="abs" style="left:56px;right:56px;top:{top + 270}px;font-size:{fs(t, [(26, 140), (44, 118), (999, 96)])}px">{mark(t)}</h1>
       {f'<div class="abs box" style="left:56px;right:56px;bottom:{170 if h == 1350 else 420}px">{rows}</div>' if rows else ''}
@@ -192,7 +262,7 @@ def cover_text(d, swipe=False, h=1350):
 def detail(d):
     """2º slide: o que se sabe, em fundo papel."""
     txt = d.get("slide2_texto", "")
-    return page(f'''<div class="abs" style="inset:0;background:{P}"></div>
+    return page(f'''<div class="abs" style="inset:0;background:{P}"></div>{texture(txt, tone="light")}
       <div class="abs" style="left:56px;top:56px">{seal()}</div>
       <div class="abs" style="left:56px;right:56px;top:210px;color:{K}">
         <div style="font-weight:900;font-size:70px;letter-spacing:-2px">O que se <span style="background:{Y};padding:0 10px">sabe</span></div>
@@ -204,7 +274,7 @@ def detail(d):
 
 def cta(n=None, total=None):
     """Último slide: chama o seguidor a mandar pauta (é assim que a página cresce)."""
-    return page(f'''<div class="abs" style="inset:0;background:{K}"></div>
+    return page(f'''<div class="abs" style="inset:0;background:{K}"></div>{texture("cta")}
       <div class="abs" style="left:0;right:0;top:120px;display:flex;justify-content:center">{guizo(170)}</div>
       <h1 class="abs" style="left:56px;right:56px;top:450px;text-align:center;font-size:96px">Viu algo <span style="color:{Y}">acontecendo</span> em Cascavel?</h1>
       <div class="abs" style="left:80px;right:80px;top:790px;text-align:center;font-weight:700;font-size:40px;line-height:1.4;color:#ddd">
@@ -225,7 +295,7 @@ def agenda_cover(a, periodo):
         if c and c not in cats:
             cats.append(c)
     tags = "".join(f'<span class="tag" style="background:rgba(255,255,255,.1);color:#fff;border:2px solid rgba(255,255,255,.2)">{esc(c)}</span>' for c in cats[:4])
-    return page(f'''<div class="abs" style="inset:0;background:radial-gradient(110% 70% at 90% 100%,#2a2a2a,{K} 60%)"></div>
+    return page(f'''<div class="abs" style="inset:0;background:radial-gradient(110% 70% at 90% 100%,#2a2a2a,{K} 60%)"></div>{texture(periodo)}
       <div class="abs" style="left:56px;top:52px">{seal()}</div>
       <div class="abs" style="right:56px;top:66px;font-weight:800;font-size:30px;letter-spacing:3px;color:{Y}">{esc(periodo.upper())}</div>
       <h1 class="abs" style="left:56px;right:56px;top:200px;font-size:172px;color:#fff">O QUE<br>FAZER EM<br><span style="background:{Y};color:{K};padding:0 16px">CASCAVEL</span></h1>
@@ -238,7 +308,7 @@ def agenda_item(e, i, total):
     rows = "".join(f'<div style="margin-top:26px"><div class="lbl">{lbl}</div><div class="val">{esc(v)}</div></div>'
                    for lbl, v in [("🗓 QUANDO", e.get("quando")), ("📍 ONDE", e.get("onde")), ("🎟 ENTRADA", e.get("preco"))] if v)
     cat = e.get("categoria", "").upper()
-    return page(f'''<div class="abs" style="inset:0;background:{K}"></div>
+    return page(f'''<div class="abs" style="inset:0;background:{K}"></div>{texture(e.get("nome", ""))}
       <div class="abs" style="left:56px;top:52px">{seal(dark=False)}</div>
       <div class="abs" style="right:56px;top:66px;font-weight:800;font-size:28px;color:#777">{i}/{total}</div>
       <div class="abs" style="left:56px;top:190px"><span class="tag" style="background:{Y};color:{K}">{EMO.get(cat, "✨")} {esc(cat or "ROLÊ")}</span></div>
@@ -265,21 +335,21 @@ def story_semana_cover(periodo, eventos):
     lista = "".join(f'<div style="display:flex;gap:22px;align-items:baseline;margin-top:26px">'
                     f'<span style="font-weight:800;font-size:30px;color:{Y};min-width:150px">{esc(e.get("dia", ""))}</span>'
                     f'<span style="font-weight:700;font-size:38px;line-height:1.2">{esc(e["nome"])}</span></div>' for e in eventos[:7])
-    return page(f'''<div class="abs" style="inset:0;background:{K}"></div>
+    return page(f'''<div class="abs" style="inset:0;background:{K}"></div>{texture(periodo, 1080, 1920)}
       <div class="abs" style="left:56px;top:130px">{seal()}</div>
       <div class="abs" style="left:56px;right:56px;top:300px">
         <div style="font-weight:800;font-size:34px;letter-spacing:4px;color:{Y}">{esc(periodo.upper())}</div>
         <h1 style="font-size:130px;margin-top:20px">A semana em<br><span style="background:{Y};color:{K};padding:0 14px">Cascavel</span></h1>
         <div style="margin-top:60px">{lista}</div>
       </div>
-      <div class="abs" style="left:0;right:0;bottom:150px;text-align:center;font-weight:800;font-size:30px;letter-spacing:3px;color:#9a9a9a">TOCA PRA VER CADA UM →</div>''', h=1920)
+''', h=1920)
 
 
 def story_semana_item(e, i, total):
     rows = "".join(f'<div style="margin-top:34px"><div class="lbl">{lbl}</div><div class="val" style="font-size:46px">{esc(v)}</div></div>'
                    for lbl, v in [("QUANDO", e.get("quando")), ("ONDE", e.get("onde")), ("ENTRADA", e.get("preco"))] if v)
     cat = (e.get("categoria") or "ROLÊ").upper()
-    return page(f'''<div class="abs" style="inset:0;background:{K}"></div>
+    return page(f'''<div class="abs" style="inset:0;background:{K}"></div>{texture(e["nome"] + str(i), 1080, 1920)}
       <div class="abs" style="left:56px;top:130px">{seal()}</div>
       <div class="abs" style="right:56px;top:150px;font-weight:800;font-size:30px;color:#777">{i}/{total}</div>
       <div class="abs" style="left:56px;right:56px;top:380px">
@@ -294,7 +364,7 @@ def story_semana_item(e, i, total):
 def story_weather(w):
     """Story das 7h: tempo do dia em Cascavel (fundo escuro, amarelo só no destaque)."""
     tag = 'background:rgba(255,255,255,.1);color:#fff;font-size:34px;border:2px solid rgba(255,255,255,.18)'
-    return page(f'''<div class="abs" style="inset:0;background:radial-gradient(120% 70% at 85% 95%,#2a2a2a,{K} 60%)"></div>
+    return page(f'''<div class="abs" style="inset:0;background:radial-gradient(120% 70% at 85% 95%,#2a2a2a,{K} 60%)"></div>{texture(w["dia"], 1080, 1920)}
       <div class="abs" style="left:56px;top:120px">{seal()}</div>
       <div class="abs" style="left:56px;right:56px;top:300px;color:#fff">
         <div style="font-weight:800;font-size:44px">Bom dia, <span style="color:{Y}">Cascavel</span></div>
