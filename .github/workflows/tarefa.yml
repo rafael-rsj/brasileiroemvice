@@ -27,7 +27,15 @@ jobs:
         run: |
           git config user.name brasileiroemvice-bot
           git config user.email bot@users.noreply.github.com
-          for f in patch/*.b64; do base64 -d "$f" | gunzip | git apply --whitespace=nowarn -v; done
+          for f in patch/*.b64; do
+            rm -rf /tmp/p && mkdir -p /tmp/p
+            if base64 -d "$f" | tar -xzf - -C /tmp/p 2>/dev/null; then
+              if [ -f /tmp/p/remove.txt ]; then xargs -a /tmp/p/remove.txt git rm -rq --ignore-unmatch; fi
+              for p in /tmp/p/*.patch; do git apply --whitespace=nowarn -v "$p"; done
+            else
+              base64 -d "$f" | gunzip | git apply --whitespace=nowarn -v
+            fi
+          done
           git rm -rq patch
           git add -A
           git commit -m "atualização do robô"
