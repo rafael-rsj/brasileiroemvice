@@ -287,6 +287,10 @@ def cmd_semana():
         print("Poucos eventos confiáveis para a semana.")
         return
     evs = a["eventos"][:7]
+    from news import event_photo
+    for e in evs:
+        if not e.get("img"):
+            e["img"], e["credito"] = event_photo(e["nome"])
     pages = [art.story_semana_cover(periodo_arte, evs)] + [art.story_semana_item(e, i + 1, len(evs)) for i, e in enumerate(evs)]
     stamp = _stamp()
     files = art.shoot(pages, ROOT / "media" / stamp[:6] / f"{stamp}-semana", "semana", h=1920)

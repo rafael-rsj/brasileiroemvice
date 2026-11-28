@@ -161,3 +161,19 @@ def stock_photo(query: str) -> tuple[str | None, str]:
     except Exception as e:
         print("Foto genérica falhou:", e)
     return None, ""
+
+
+def event_photo(nome: str) -> tuple[str | None, str]:
+    """Foto real do evento: procura uma notícia sobre ele (Bing Notícias) e usa a foto da matéria."""
+    from urllib.parse import quote_plus
+    try:
+        feed = _fetch_feed(f"https://www.bing.com/news/search?q={quote_plus(nome + ' Cascavel')}&format=rss&setlang=pt-BR")
+        for e in feed.entries[:5]:
+            link = _unwrap(e.get("link", ""))
+            img = og_image(link) if link else None
+            if img:
+                from urllib.parse import urlparse
+                return img, f"Foto: divulgação/{urlparse(link).netloc.replace('www.', '')}"
+    except Exception as ex:
+        print("Foto do evento falhou:", nome, ex)
+    return None, ""
