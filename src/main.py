@@ -103,14 +103,14 @@ def _stamp():
 
 
 # ------------------------------------------------------------------ post
-def cmd_post():
+def cmd_post(itens_forcados=None, urgente=None):
     import art
     from writer import pick_and_write
     cfg = load_cfg()
     hist = _load(HISTORY, [])
-    items = collect()
+    items = itens_forcados or collect()
     pfile = ROOT / "config" / "pautas.yaml"  # pautas que o dono da página quer ver postadas primeiro
-    if pfile.exists():
+    if pfile.exists() and not itens_forcados:
         import yaml
         feitas = {h.get("pauta") for h in hist}
         for pa in yaml.safe_load(pfile.read_text(encoding="utf-8")) or []:
@@ -118,7 +118,9 @@ def cmd_post():
                 items.insert(0, {"key": f"pauta-{pa['id']}", "title": pa["titulo"], "summary": pa.get("resumo", ""),
                                  "link": pa.get("link", ""), "source": pa.get("fonte", "guizo"), "trusted": True, "pauta": pa["id"]})
                 break
-    data = pick_and_write(items, [h["titulo"] for h in hist])
+    data = pick_and_write(items, [] if urgente == "atualizacao" else [h["titulo"] for h in hist])
+    if data and urgente:
+        data["urgente"] = urgente
     if not data:
         print("Nada bom para postar agora.")
         mark_seen([i["key"] for i in items])
@@ -148,9 +150,10 @@ def cmd_post():
     if DRY:
         _preview(slides + [story], caption)
         return
-    q = _load(QUEUE, [])
-    q.append({"file": story.relative_to(ROOT).as_posix(), "created": stamp})
-    _save(QUEUE, q)
+    if not urgente:
+        q = _load(QUEUE, [])
+        q.append({"file": story.relative_to(ROOT).as_posix(), "created": stamp})
+        _save(QUEUE, q)
     mark_seen([i["key"] for i in items])
     hist.append({"titulo": data["titulo"], "tipo": data["tipo"], "quando": stamp, "links": [u.get("link") for u in data["used"]],
                  "pauta": next((u.get("pauta") for u in data["used"] if u.get("pauta")), None),
@@ -172,6 +175,11 @@ def cmd_post():
             print("Facebook:", facebook.publicar(str(page), [_url(x) for x in slides], fb_txt))
         except Exception as e:
             print("Facebook pulado:", e)
+    if urgente:
+        try:
+            print("Story urgente:", ig.post_story(_url(story)))
+        except Exception as e:
+            print("Story urgente falhou:", e)
 
 
 # ------------------------------------------------------------------ agenda
@@ -284,6 +292,39 @@ def _semana():
     dom = seg + timedelta(days=6)
     return (f"semana de segunda {seg.day:02d}/{seg.month:02d} a domingo {dom.day:02d}/{dom.month:02d}",
             f"{seg.day:02d}/{seg.month:02d} a {dom.day:02d}/{dom.month:02d}")
+
+
+PLANTAO = ROOT / "state" / "plantao.json"
+
+
+def cmd_plantao():
+    """De hora em hora (6h–23h): se acontecer algo urgente, posta na hora, fora da grade (com limite por dia)."""
+    from writer import plantao
+    agora = datetime.now(BRT)
+    if agora.hour < 6 or agora.hour > 23:
+        return
+    st = _load(PLANTAO, {"vistos": [], "dia": "", "hoje": 0})
+    if st.get("dia") != agora.strftime("%Y-%m-%d"):
+        st.update(dia=agora.strftime("%Y-%m-%d"), hoje=0)
+    items = [i for i in collect(max_age_h=4) if i["key"] not in st["vistos"]]
+    st["vistos"] = (st["vistos"] + [i["key"] for i in items])[-1500:]
+    _save(PLANTAO, st)
+    if not items or st["hoje"] >= load_cfg().get("plantao_limite_dia", 3):
+        print("Plantão: nada novo." if not items else "Plantão: limite do dia atingido.")
+        return
+    hist = _load(HISTORY, [])
+    hoje = [f"{h['quando'][9:11]}:{h['quando'][11:13]} UTC — {h['titulo']}" for h in hist
+            if h.get("quando", "").startswith(datetime.now(timezone.utc).strftime("%Y%m%d"))]
+    r = plantao(items, hoje)
+    print("Plantão:", r)
+    if not r.get("urgente"):
+        return
+    sel = [items[i] for i in r.get("indices", []) if 0 <= i < len(items)]
+    if not sel:
+        return
+    st["hoje"] += 1
+    _save(PLANTAO, st)
+    cmd_post(itens_forcados=sel, urgente=r.get("modo", "novo"))
 
 
 def cmd_hoje():
@@ -417,7 +458,7 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "demo"
     ig = [] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"]
     needs = {"post": ["ANTHROPIC_API_KEY"] + ig, "agenda": ["ANTHROPIC_API_KEY"] + ig, "reel": ig, "story": ig,
-             "clima": ["ANTHROPIC_API_KEY"] + ig, "semana": ["ANTHROPIC_API_KEY"] + ig, "hoje": ["ANTHROPIC_API_KEY"] + ig, "lancamento": ig, "comments": ["ANTHROPIC_API_KEY", "IG_ACCESS_TOKEN", "IG_USER_ID"]}
+             "clima": ["ANTHROPIC_API_KEY"] + ig, "semana": ["ANTHROPIC_API_KEY"] + ig, "hoje": ["ANTHROPIC_API_KEY"] + ig, "plantao": ["ANTHROPIC_API_KEY"] + ig, "lancamento": ig, "comments": ["ANTHROPIC_API_KEY", "IG_ACCESS_TOKEN", "IG_USER_ID"]}
     if not DRY and cmd not in ("fontes", "demo", "lancamento", "fbteste") and not load_cfg().get("ativo", False):
         print("Robô pausado (ativo: false em config/settings.yaml). Nada foi publicado.")
         sys.exit(0)
@@ -426,5 +467,5 @@ if __name__ == "__main__":
         print(f"Aguardando configuração: faltam os secrets {missing}. Nada foi feito.")
         sys.exit(0)
     # Feed não leva agenda (é temporária): o horário da quinta vira post normal; a agenda sai em stories na segunda.
-    {"post": cmd_post, "agenda": cmd_post, "semana": cmd_semana, "hoje": cmd_hoje, "reel": cmd_reel, "story": cmd_story, "clima": cmd_clima,
+    {"post": cmd_post, "agenda": cmd_post, "semana": cmd_semana, "hoje": cmd_hoje, "plantao": cmd_plantao, "reel": cmd_reel, "story": cmd_story, "clima": cmd_clima,
      "comments": cmd_comments, "lancamento": cmd_lancamento, "fbteste": cmd_fbteste, "fontes": cmd_fontes, "demo": cmd_demo}[cmd]()

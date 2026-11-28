@@ -192,8 +192,11 @@ NOMES = {"POLICIA": "POLÍCIA"}
 def cat_tag(d, size=28):
     tipo = (d.get("tipo") or "NOVIDADE").upper().replace("Í", "I")
     bg, fg, extra = CATS.get(tipo, CATS["NOVIDADE"])
-    return (f'<span class="tag" style="background:{bg};color:{fg};font-size:{size}px;{extra}">'
-            f'{NOMES.get(tipo, tipo)}</span>')
+    urg = d.get("urgente")
+    pre = (f'<span class="tag" style="background:{R};color:#fff;font-size:{size}px;margin-right:12px">'
+           f'{"ATUALIZAÇÃO" if urg == "atualizacao" else "URGENTE"}</span>') if urg else ""
+    return pre + (f'<span class="tag" style="background:{bg};color:{fg};font-size:{size}px;{extra}">'
+                  f'{NOMES.get(tipo, tipo)}</span>')
 
 
 def cover_photo(d, img, credit="", swipe=False, h=1350):

@@ -208,3 +208,22 @@ Responda só com o comentário (ou SKIP)."""
                                         messages=[{"role": "user", "content": prompt}])
     out = _text(msg).strip().strip('"')
     return None if not out or out.upper().startswith("SKIP") else out
+
+
+def plantao(items: list[dict], hoje: list[str]) -> dict:
+    """Plantão: entre as notícias das últimas horas, existe algo URGENTE que não pode esperar o próximo horário?"""
+    listing = "\n".join(f"[{i}] ({it['source']}) {it['title']} — {it['summary'][:240]}" for i, it in enumerate(items[:30]))
+    return _ask(f"""Notícias de Cascavel das últimas horas:
+{listing}
+
+O que o guizo já postou hoje (horário e título):
+{chr(10).join('- ' + t for t in hoje) or '- nada ainda'}
+
+Você é o plantão do guizo. Só marque urgente o que um morador de Cascavel precisa saber AGORA e que a cidade inteira
+vai comentar: acidente grave ou que travou uma via importante, incêndio grande, temporal/enchente, queda de energia
+ou falta de água em muitos bairros, interdição grande, crime de enorme repercussão, fato muito fora do comum.
+Notícia comum, nota oficial, evento ou novidade NÃO é urgente (essas esperam o horário normal).
+Se já postamos sobre o assunto hoje, só marque "atualizacao" se houver informação nova e importante (ex.: liberação da via,
+estado das vítimas, causa confirmada).
+Responda SOMENTE em JSON: {{"urgente": false}} ou
+{{"urgente": true, "modo": "novo" ou "atualizacao", "indices": [itens usados], "motivo": "1 frase"}}""", 800)

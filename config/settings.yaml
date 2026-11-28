@@ -66,3 +66,6 @@ facebook_page_id: "61596907235722"
 
 # Direct do dono: o que ele mandar para o @guizocascavel vira pauta (reel, post, link, texto)
 dono_instagram: "rafaels.j"
+
+# Plantão: posts urgentes fora da grade (acidente grave, temporal...). Máximo por dia:
+plantao_limite_dia: 3
