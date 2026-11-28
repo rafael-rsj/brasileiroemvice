@@ -32,11 +32,29 @@ def _font() -> Path:
     return f
 
 
+BRAND = ROOT / "assets" / "brand"
+
+
+def asset(name):
+    f = BRAND / name
+    return f if f.exists() else None
+
+
+def mascot(name, width, style=""):
+    """Cobrinha do guizo (poses em assets/brand). Sem a imagem, não desenha nada."""
+    f = asset(f"{name}.png") or asset("mascote.png")
+    return (f'<img src="{f.as_uri()}" style="width:{width}px;display:block;'
+            f'filter:drop-shadow(0 14px 22px rgba(0,0,0,.35));{style}">') if f else ""
+
+
 def guizo(w=40, c=Y):
     return GUIZO.format(w=w, h=int(w * 1.3), c=c)
 
 
 def seal(dark=True, size=40):
+    selo = asset("selo.png")
+    if dark and selo:
+        return f'<img src="{selo.as_uri()}" style="height:{int(size * 1.9)}px;display:block">'
     bg, fg, ic = (K, "#fff", Y) if dark else (Y, K, K)
     return (f'<div class="seal" style="background:{bg}">{guizo(size, ic)}'
             f'<span style="color:{fg};font-size:{int(size * 1.02)}px">guizo</span></div>')
@@ -127,9 +145,21 @@ def cover_alert(d, swipe=False, h=1350):
 
 
 def cover_text(d, swipe=False, h=1350):
-    """Capa só com tipografia (quando não tem foto boa)."""
+    """Capa sem foto: ilustração da cidade (assets/brand/fundo_cidade.jpg) ou fundo amarelo."""
     t = d["titulo"]
     info = " · ".join(x for x in [d.get("onde"), d.get("quando")] if x)
+    bg = asset("fundo_cidade.jpg")
+    if bg:
+        return page(f'''<img class="abs" src="{bg.as_uri()}" style="left:0;top:0;width:100%;height:{1350 if h == 1350 else 1920}px;object-fit:cover;object-position:top">
+      <div class="abs" style="left:0;right:0;bottom:0;height:{55 if h == 1350 else 50}%;background:linear-gradient(180deg,rgba(17,17,17,0),#111 30%)"></div>
+      <div class="abs" style="left:56px;top:52px">{seal()}</div>
+      <div class="abs" style="left:56px;right:56px;bottom:{150 if h == 1350 else 380}px">
+        <span class="tag" style="background:{Y};color:{K}">{esc(d.get("selo", "NOVIDADE"))}</span>
+        <h1 style="font-size:{fs(t, [(34, 124), (52, 106), (999, 90)])}px;margin-top:26px">{mark(t)}</h1>
+        <div style="font-weight:600;font-size:34px;color:rgba(255,255,255,.85);margin-top:22px;line-height:1.3">{esc(d.get("subtitulo", ""))}</div>
+        {f'<div style="font-weight:700;font-size:32px;color:{Y};margin-top:14px">📍 {esc(info)}</div>' if info else ''}
+      </div>
+      <div class="handle">{HANDLE}</div>{'<div class="swipe" style="color:' + Y + '">ARRASTA →</div>' if swipe else ''}''', h=h)
     return page(f'''<div class="abs" style="inset:0;background:{Y}"></div>
       <div class="abs" style="left:56px;top:52px">{seal()}</div>
       <div class="abs" style="right:56px;top:66px;font-weight:800;font-size:28px;letter-spacing:3px;color:{K}">{esc(d.get("selo", ""))}</div>
@@ -154,7 +184,7 @@ def detail(d):
 def cta(n=None, total=None):
     """Último slide: chama o seguidor a mandar pauta (é assim que a página cresce)."""
     return page(f'''<div class="abs" style="inset:0;background:{K}"></div>
-      <div class="abs" style="left:0;right:0;top:120px;display:flex;justify-content:center">{guizo(170)}</div>
+      <div class="abs" style="left:0;right:0;top:{60 if asset("mascote_apontando.png") else 120}px;display:flex;justify-content:center">{mascot("mascote_atencao", 360) or guizo(170)}</div>
       <h1 class="abs" style="left:56px;right:56px;top:450px;text-align:center;font-size:96px">Viu algo <span style="color:{Y}">acontecendo</span> em Cascavel?</h1>
       <div class="abs" style="left:80px;right:80px;top:790px;text-align:center;font-weight:700;font-size:40px;line-height:1.4;color:#ddd">
         Manda no direct ou marca o <span style="color:{Y}">{HANDLE}</span> no seu story que a gente espalha 📣</div>
@@ -173,14 +203,15 @@ def agenda_cover(a, periodo):
         c = e.get("categoria", "").upper()
         if c and c not in cats:
             cats.append(c)
-    tags = "".join(f'<span class="tag" style="background:{K};color:#fff">{esc(c)}</span>' for c in cats[:4])
-    return page(f'''<div class="abs" style="inset:0;background:{Y}"></div>
+    tags = "".join(f'<span class="tag" style="background:rgba(255,255,255,.1);color:#fff;border:2px solid rgba(255,255,255,.2)">{esc(c)}</span>' for c in cats[:4])
+    return page(f'''<div class="abs" style="inset:0;background:radial-gradient(110% 70% at 90% 100%,#2a2a2a,{K} 60%)"></div>
       <div class="abs" style="left:56px;top:52px">{seal()}</div>
-      <div class="abs" style="right:56px;top:66px;font-weight:800;font-size:30px;letter-spacing:3px;color:{K}">{esc(periodo.upper())}</div>
-      <h1 class="abs" style="left:56px;right:56px;top:200px;font-size:172px;color:{K}">O QUE<br>FAZER EM<br><span style="background:{K};color:{Y};padding:0 16px">CASCAVEL</span></h1>
-      <div class="abs" style="left:56px;top:800px;font-weight:800;font-size:50px;color:{K}">{len(a["eventos"])} rolês pra você 👇</div>
-      <div class="abs" style="left:56px;right:56px;bottom:130px;display:flex;gap:16px;flex-wrap:wrap">{tags}</div>
-      <div class="handle" style="color:{K}">{HANDLE}</div><div class="swipe" style="color:{K}">ARRASTA →</div>''')
+      <div class="abs" style="right:56px;top:66px;font-weight:800;font-size:30px;letter-spacing:3px;color:{Y}">{esc(periodo.upper())}</div>
+      <h1 class="abs" style="left:56px;right:56px;top:200px;font-size:172px;color:#fff">O QUE<br>FAZER EM<br><span style="background:{Y};color:{K};padding:0 16px">CASCAVEL</span></h1>
+      <div class="abs" style="left:56px;top:800px;font-weight:800;font-size:50px;color:#fff">{len(a["eventos"])} rolês pra você 👇</div>
+      <div class="abs" style="left:56px;right:{460 if asset("mascote_festa.png") else 56}px;bottom:130px;display:flex;gap:16px;flex-wrap:wrap">{tags}</div>
+      <div class="abs" style="right:20px;bottom:90px">{mascot("mascote_festa", 420)}</div>
+      <div class="handle">{HANDLE}</div><div class="swipe" style="color:{Y}">ARRASTA →</div>''')
 
 
 def agenda_item(e, i, total):
@@ -210,20 +241,22 @@ def story_from(kind, d, img=None, credit=""):
 
 
 def story_weather(w):
-    """Story das 7h: tempo do dia em Cascavel."""
-    return page(f'''<div class="abs" style="inset:0;background:{Y}"></div>
+    """Story das 7h: tempo do dia em Cascavel (fundo escuro, amarelo só no destaque)."""
+    tag = 'background:rgba(255,255,255,.1);color:#fff;font-size:34px;border:2px solid rgba(255,255,255,.18)'
+    return page(f'''<div class="abs" style="inset:0;background:radial-gradient(120% 70% at 85% 95%,#2a2a2a,{K} 60%)"></div>
       <div class="abs" style="left:56px;top:120px">{seal()}</div>
-      <div class="abs" style="left:56px;right:56px;top:300px;color:{K}">
-        <div style="font-weight:800;font-size:44px">Bom dia, Cascavel ☀️</div>
-        <div style="font-weight:700;font-size:36px;margin-top:10px;opacity:.75">{esc(w["dia"])}</div>
-        <div style="font-weight:900;font-size:330px;letter-spacing:-14px;line-height:1;margin-top:60px">{w["max"]}°</div>
+      <div class="abs" style="left:56px;right:56px;top:300px;color:#fff">
+        <div style="font-weight:800;font-size:44px">Bom dia, <span style="color:{Y}">Cascavel</span></div>
+        <div style="font-weight:700;font-size:36px;margin-top:10px;color:#9a9a9a">{esc(w["dia"])}</div>
+        <div style="font-weight:900;font-size:330px;letter-spacing:-14px;line-height:1;margin-top:60px;color:{Y}">{w["max"]}°</div>
         <div style="font-weight:800;font-size:56px">mínima de {w["min"]}° · {esc(w["descricao"])}</div>
         <div style="margin-top:70px;display:flex;gap:24px;flex-wrap:wrap">
-          <span class="tag" style="background:{K};color:#fff;font-size:34px">☔ chuva {w["chuva"]}%</span>
-          <span class="tag" style="background:{K};color:#fff;font-size:34px">💨 vento {w["vento"]} km/h</span></div>
-        <div style="font-weight:800;font-size:46px;margin-top:90px;line-height:1.25">{esc(w["dica"])}</div>
+          <span class="tag" style="{tag}">☔ chuva {w["chuva"]}%</span>
+          <span class="tag" style="{tag}">💨 vento {w["vento"]} km/h</span></div>
+        <div style="font-weight:800;font-size:46px;margin-top:90px;line-height:1.25;max-width:520px">{esc(w["dica"])}</div>
       </div>
-      <div class="abs" style="left:56px;bottom:120px;font-weight:700;font-size:28px;color:{K};opacity:.7">{HANDLE} · fonte: Open-Meteo</div>''',
+      <div class="abs" style="right:0;bottom:150px">{mascot("mascote_frio" if w["min"] <= 12 else "mascote", 540)}</div>
+      <div class="abs" style="left:56px;bottom:120px;font-weight:700;font-size:28px;color:#777">{HANDLE} · fonte: Open-Meteo</div>''',
                 h=1920)
 
 
