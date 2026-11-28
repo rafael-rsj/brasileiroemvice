@@ -5,11 +5,13 @@ on:
     - cron: "10 10 * * *"            # 07:10 story do clima
     - cron: "10 11 * * *"            # 08:10 post (1º do dia)
     - cron: "40 12 * * 0,6"          # 09:40 sáb/dom: stories "Hoje em Cascavel"
+    - cron: "40 14 * * *"            # 11:40 post (2º do dia)
     - cron: "10 16 * * *"            # 13:10 story do post da manhã
     - cron: "20 20 * * 0,1,2,3,5,6"  # 17:20 post
     - cron: "20 20 * * 4"            # 17:20 quinta: agenda do fim de semana
     - cron: "30 22 * * *"            # 19:30 reel
     - cron: "10 0 * * *"             # 21:10 story
+    - cron: "57 9-23,0-2 * * *"      # 06:57–23:57 plantão: notícia urgente em tempo real
     - cron: "27 * * * *"             # de hora em hora: comentários
   workflow_dispatch:
     inputs:
@@ -35,11 +37,12 @@ jobs:
         run: |
           case "${{ github.event.schedule }}" in
             "10 10 * * *") c=clima ;;
-            "10 11 * * *"|"20 20 * * 0,1,2,3,5,6") c=post ;;
+            "10 11 * * *"|"40 14 * * *"|"20 20 * * 0,1,2,3,5,6") c=post ;;
             "40 12 * * 0,6") c=hoje ;;
             "20 20 * * 4") c=agenda ;;
             "30 22 * * *") c=reel ;;
             "10 16 * * *"|"10 0 * * *") c=story ;;
+            "57 9-23,0-2 * * *") c=plantao ;;
             "27 * * * *") c=comments ;;
             *) c="${{ inputs.comando }}" ;;
           esac
