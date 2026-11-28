@@ -44,6 +44,7 @@ agenda:
   - {nome: "Rolê Agora", url: "https://www.roleagora.com.br/city/cascavel-pr"}
   - {nome: "Vem Ver Cascavel", url: "https://vemvercascavel.com.br/"}
   - {nome: "Blueticket", url: "https://www.blueticket.com.br/eventos/cascavel"}
+  - {nome: "Notícias de eventos", url: "https://www.bing.com/news/search?q=Cascavel+PR+show+OR+festival+OR+feira+OR+evento&format=rss&setlang=pt-BR"}
   - {nome: "Google eventos", url: "https://news.google.com/rss/search?q=Cascavel+(show+OR+festival+OR+feira+OR+evento)+when:7d&hl=pt-BR&gl=BR&ceid=BR:pt-419"}
 
 seguranca:

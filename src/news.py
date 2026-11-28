@@ -101,6 +101,7 @@ def _unwrap(url: str) -> str:
 
 def resolve(url: str) -> str:
     """Links do Google Notícias escondem o endereço real da matéria: decodifica para chegar no site."""
+    url = _unwrap(url)
     if url and "news.google." in url:
         try:
             from googlenewsdecoder import gnewsdecoder

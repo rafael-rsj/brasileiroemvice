@@ -24,7 +24,7 @@ def read_sources(max_chars: int = 9000) -> list[dict]:
         pg = ctx.new_page()
         for src in cfg.get("agenda", []):
             try:
-                if "news.google." in src["url"]:
+                if "news.google." in src["url"] or "bing.com/news" in src["url"]:
                     feed = _fetch_feed(src["url"])
                     txt = "\n".join(f"- {e.get('title', '')}" for e in feed.entries[:40])
                     # cada notícia vira um "card": a foto da matéria (quase sempre do próprio evento) é buscada depois
