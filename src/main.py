@@ -127,7 +127,12 @@ def cmd_post(itens_forcados=None, urgente=None):
                 items.insert(0, {"key": f"pauta-{pa['id']}", "title": pa["titulo"], "summary": pa.get("resumo", ""),
                                  "link": pa.get("link", ""), "source": pa.get("fonte", "guizo"), "trusted": True, "pauta": pa["id"]})
                 break
-    data = pick_and_write(items, [] if urgente == "atualizacao" else [h["titulo"] for h in hist], momento)
+    circulou = []
+    if not itens_forcados:
+        from news import ja_circulou
+        circulou = ja_circulou()
+        print(f"{len(circulou)} assuntos que já circularam")
+    data = pick_and_write(items, [] if urgente == "atualizacao" else [h["titulo"] for h in hist], momento, circulou)
     if data and urgente:
         data["urgente"] = urgente
     hoje = datetime.now(BRT).strftime("%Y%m%d")
@@ -326,6 +331,7 @@ def cmd_plantao():
     items = [i for i in collect(max_age_h=4) if i["key"] not in st["vistos"]]
     st["vistos"] = (st["vistos"] + [i["key"] for i in items])[-1500:]
     _save(PLANTAO, st)
+    _git(["state"], "plantão")  # guarda o que já foi visto e o limite do dia entre uma rodada e outra
     if not items or st["hoje"] >= load_cfg().get("plantao_limite_dia", 3):
         print("Plantão: nada novo." if not items else "Plantão: limite do dia atingido.")
         return
@@ -341,6 +347,7 @@ def cmd_plantao():
         return
     st["hoje"] += 1
     _save(PLANTAO, st)
+    _git(["state"], "plantão: urgente")
     cmd_post(itens_forcados=sel, urgente=r.get("modo", "novo"))
 
 

@@ -13,6 +13,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / "state" / "seen.json"
+ASSUNTOS = ROOT / "state" / "assuntos.json"  # quando cada manchete apareceu pela 1ª vez
 LOCAIS = ["cgn", "catve", "o paraná", "oparana", "radar bo", "tarobá", "taroba", "band b", "bandab", "rpc", "g1",
           "prefeitura de cascavel", "cascavel.pr.gov", "câmara de cascavel", "aen", "agência estadual", "bem paraná",
           "tribuna", "gazeta do povo", "massa news", "ric", "cbn cascavel"]
@@ -55,7 +56,7 @@ def collect(max_age_h: int | None = None) -> list[dict]:
     blocked = [b.lower() for b in cfg.get("bloqueados", [])]
     max_age = (max_age_h or cfg["seguranca"]["idade_maxima_horas"]) * 3600
     seen = _seen()
-    items = []
+    items, velhos = [], []
     for src in cfg["fontes"]:
         try:
             feed = _fetch_feed(src["url"])
@@ -73,6 +74,8 @@ def collect(max_age_h: int | None = None) -> list[dict]:
                 continue
             ts = e.get("published_parsed") or e.get("updated_parsed")
             if ts and time.time() - time.mktime(ts) > max_age:
+                if time.time() - time.mktime(ts) < 48 * 3600:
+                    velhos.append(title)  # já circulou: serve para reconhecer notícia requentada
                 continue
             outlet = (e.get("source") or {}).get("title", "")
             trusted = src["confiavel"] or any(v in outlet.lower() for v in LOCAIS)
@@ -85,8 +88,35 @@ def collect(max_age_h: int | None = None) -> list[dict]:
     for i in items:
         uniq.setdefault(i["key"], i)
     fresh = [i for i in uniq.values() if i["key"] not in seen]
+    _memoriza(list(uniq.values()), velhos)
     print(f"{len(uniq)} itens do tema, {len(fresh)} novos")
     return fresh
+
+
+def _memoriza(items: list[dict], velhos: list[str]):
+    mem = json.loads(ASSUNTOS.read_text()) if ASSUNTOS.exists() else {}
+    now = int(time.time())
+    for i in items:
+        mem.setdefault(i["key"], {"t": i["title"], "em": now})
+    for t in velhos:
+        mem.setdefault(key_for(t), {"t": t, "em": now - 24 * 3600})
+    mem = {k: v for k, v in mem.items() if now - v["em"] < 3 * 86400}
+    ASSUNTOS.parent.mkdir(exist_ok=True)
+    ASSUNTOS.write_text(json.dumps(mem, ensure_ascii=False))
+
+
+def ja_circulou(horas: int = 6) -> list[str]:
+    """Manchetes que já estavam rodando há mais de `horas` (nos sites ou nas páginas grandes da cidade)."""
+    mem = json.loads(ASSUNTOS.read_text()) if ASSUNTOS.exists() else {}
+    now = int(time.time())
+    antigos = sorted((v for v in mem.values() if now - v["em"] > horas * 3600), key=lambda v: -v["em"])
+    out = [f"(site, há {int((now - v['em']) / 3600)}h) {v['t']}" for v in antigos[:60]]
+    try:
+        from radar import concorrencia
+        out += concorrencia()
+    except Exception as e:
+        print("[concorrência] não deu para ler:", str(e)[:120])
+    return out
 
 
 def _unwrap(url: str) -> str:

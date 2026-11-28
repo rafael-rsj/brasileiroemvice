@@ -178,6 +178,26 @@ def _discovery(username):
     return ig._get(ig.user, fields=f)["business_discovery"]
 
 
+def concorrencia(horas=36):
+    """O que as páginas grandes de notícia de Cascavel já postaram (para não requentar o que todo mundo já viu)."""
+    cfg = yaml.safe_load((ROOT / "config" / "settings.yaml").read_text(encoding="utf-8"))
+    perfis = cfg.get("concorrentes", ["noticiascascavel", "cascavelemfatos", "cascavel.spotted", "rolezandocascavel", "cascavel_prefa"])
+    agora = datetime.now(timezone.utc)
+    out = []
+    for p in perfis:
+        try:
+            d = _discovery(p)
+        except Exception as e:
+            print("[concorrência] pulei", p, str(e)[:100])
+            continue
+        for m in d.get("media", {}).get("data", []):
+            ts = datetime.strptime(m["timestamp"], "%Y-%m-%dT%H:%M:%S%z")
+            h = (agora - ts).total_seconds() / 3600
+            if h <= horas and m.get("caption"):
+                out.append(f"(@{p}, há {int(h)}h) " + " ".join(m["caption"].split())[:160])
+    return out
+
+
 def radar(max_envios=4):
     from writer import comentario_para
     hora = datetime.now(BRT).hour

@@ -66,7 +66,7 @@ def _idade(it: dict) -> str:
     return f"há {max(int(h), 0)}h"
 
 
-def pick_and_write(items: list[dict], recent_titles: list[str], momento: str = "") -> dict | None:
+def pick_and_write(items: list[dict], recent_titles: list[str], momento: str = "", circulou: list[str] | None = None) -> dict | None:
     """Escolhe a melhor pauta entre as notícias novas e devolve tudo escrito (ou None se nada vale post)."""
     if not items:
         return None
@@ -78,6 +78,13 @@ FRESCOR É OBRIGATÓRIO: só vale fato que aconteceu nas últimas horas ou que a
 Notícia de ontem que já circulou NÃO serve, mesmo que seja boa (o que foi, foi). Se o texto indica que o fato foi
 "ontem", "na última sexta" ou antes, descarte. Item "sem data" só se o texto deixar claro que é de hoje.
 Melhor pular do que postar coisa velha.
+
+O QUE JÁ CIRCULOU (sites e páginas grandes da cidade postaram há horas; o público já viu):
+{chr(10).join('- ' + c for c in (circulou or [])[:80]) or '- nada'}
+Se a pauta for o MESMO ASSUNTO de algo dessa lista postado há mais de 6h, ela só vale se trouxer um FATO NOVO
+(foi autorizado, data confirmada, alguém foi preso, saiu o resultado, abriu de fato, mudou algo). Nesse caso o título
+começa pelo fato novo e o selo é "ATUALIZAÇÃO". Se for a mesma notícia contada de novo, descarte.
+Assunto que as páginas grandes postaram há menos de 3h ainda está quente e pode ir, com um ângulo próprio.
 
 Já postamos recentemente (não repita o assunto):
 {chr(10).join('- ' + t for t in recent_titles[-20:]) or '- nada ainda'}
