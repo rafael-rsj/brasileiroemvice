@@ -100,26 +100,71 @@ def inbox():
         texto = (m.get("text") or m.get("caption") or "").strip()
         if texto.startswith("/start"):
             continue
-        links = re.findall(r"https?://\S+", texto)
-        material = texto
-        for l in links[:2]:
-            info = _page_info(l)
-            material += f"\n\n[link {l}]\n{info['titulo']}\n{info['texto']}"
-        if not material.strip():
-            send("Recebi, mas não consegui ler nada. Manda o link ou um texto junto 🙏")
+        if _processa(texto, f"tg{u['update_id']}", "Telegram"):
+            novas += 1
+    _save(STATE, st)
+    return novas
+
+
+def _processa(texto: str, pid: str, canal: str) -> bool:
+    """Lê o material (texto + links), a IA decide se vale e, se valer, põe na fila do próximo post."""
+    from writer import avaliar_pauta
+    links = re.findall(r"https?://\S+", texto)
+    material = texto
+    for l in links[:2]:
+        info = _page_info(l)
+        material += f"\n\n[link {l}]\n{info['titulo']}\n{info['texto']}"
+    if not material.strip():
+        send(f"Recebi pelo {canal}, mas não consegui ler nada. Manda o link ou um texto junto 🙏")
+        return False
+    r = avaliar_pauta(material)
+    if not r.get("vale"):
+        send(f"[{canal}] Essa eu deixei passar: {r.get('motivo', 'não rendeu post')}.")
+        return False
+    fila = (yaml.safe_load(PAUTAS.read_text(encoding="utf-8")) if PAUTAS.exists() else []) or []
+    fila.append({"id": pid, "titulo": r["titulo"], "resumo": r["resumo"], "link": links[0] if links else "",
+                 "fonte": r.get("fonte") or "leitor do guizo"})
+    PAUTAS.write_text(yaml.safe_dump(fila[-30:], allow_unicode=True, sort_keys=False), encoding="utf-8")
+    send(f"[{canal}] Boa! Entrou na fila: \"{r['titulo']}\". Sai no próximo post do feed (11h40 ou 17h20).")
+    return True
+
+
+def ig_inbox():
+    """Lê o direct do guizo com o dono (perfil em `dono_instagram`): reels, posts e links que ele mandar viram pauta."""
+    from instagram import IG
+    cfg = yaml.safe_load((ROOT / "config" / "settings.yaml").read_text(encoding="utf-8"))
+    dono = (cfg.get("dono_instagram") or "").lower()
+    if not dono:
+        return 0
+    ig = IG()
+    st = _load(STATE, {})
+    vistos = set(st.get("ig_vistos", []))
+    try:
+        conv = ig._get(f"{ig.user}/conversations", platform="instagram",
+                       fields="participants,messages.limit(15){id,message,from,created_time,attachments,shares}")["data"]
+    except Exception as e:
+        print("[direct] sem acesso às mensagens:", str(e)[:200])
+        return 0
+    novas = 0
+    for c in conv:
+        nomes = [p.get("username", "").lower() for p in c.get("participants", {}).get("data", [])]
+        if dono not in nomes:
             continue
-        r = avaliar_pauta(material)
-        if not r.get("vale"):
-            send(f"Essa eu deixei passar: {r.get('motivo', 'não rendeu post')}.")
-            continue
-        fila = yaml.safe_load(PAUTAS.read_text(encoding="utf-8")) if PAUTAS.exists() else []
-        fila = fila or []
-        pid = f"tg{u['update_id']}"
-        fila.append({"id": pid, "titulo": r["titulo"], "resumo": r["resumo"], "link": links[0] if links else "",
-                     "fonte": r.get("fonte") or "leitor do guizo"})
-        PAUTAS.write_text(yaml.safe_dump(fila[-30:], allow_unicode=True, sort_keys=False), encoding="utf-8")
-        novas += 1
-        send(f"Boa! Entrou na fila: \"{r['titulo']}\". Sai no próximo post do feed (11h40 ou 17h20).")
+        for m in reversed(c.get("messages", {}).get("data", [])):
+            if m["id"] in vistos or (m.get("from", {}).get("username", "").lower() != dono):
+                continue
+            vistos.add(m["id"])
+            partes = [m.get("message") or ""]
+            for a in (m.get("attachments", {}) or {}).get("data", []):
+                for k in ("video_data", "image_data", "generic_template", "share"):
+                    v = a.get(k) or {}
+                    partes += [str(v.get(x, "")) for x in ("url", "link", "title", "subtitle") if v.get(x)]
+            for sh in (m.get("shares", {}) or {}).get("data", []):
+                partes += [sh.get("link", ""), sh.get("description", ""), sh.get("name", "")]
+            texto = " ".join(x for x in partes if x).strip()
+            if texto and _processa(texto, f"ig{m['id'][-12:]}", "direct"):
+                novas += 1
+    st["ig_vistos"] = list(vistos)[-500:]
     _save(STATE, st)
     return novas
 

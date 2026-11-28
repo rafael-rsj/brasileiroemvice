@@ -63,3 +63,6 @@ radar_perfis: [noticiascascavel, cascavelemfatos, rolezandocascavel, cascavel_pr
 
 # Página do Facebook (o robô repete o post do feed lá, com legenda para 30 a 60 anos)
 facebook_page_id: "61596907235722"
+
+# Direct do dono: o que ele mandar para o @guizocascavel vira pauta (reel, post, link, texto)
+dono_instagram: "rafaels.j"

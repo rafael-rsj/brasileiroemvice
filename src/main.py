@@ -341,7 +341,7 @@ def cmd_comments():
     _save(REPLIED, list(done)[-5000:])
     import radar
     if radar.ativo():
-        for f in (radar.inbox, radar.radar):
+        for f in (radar.inbox, radar.ig_inbox, radar.radar):
             try:
                 print(f.__name__, "->", f())
             except Exception as e:
