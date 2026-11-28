@@ -335,6 +335,25 @@ def cmd_fontes():
         print(f"\n### {s['fonte']}: {len(s['texto'])} caracteres\n{s['texto'][:600]}")
 
 
+def cmd_lancamento():
+    """Publica o post e o story de lançamento (uma vez só)."""
+    import art
+    from lancamento import LEGENDA, launch
+    stamp = _stamp()
+    out = ROOT / "media" / stamp[:6] / f"{stamp}-lancamento"
+    post = art.shoot([launch(1350)], out, "post")[0]
+    story = art.shoot([launch(1920)], out, "story", h=1920)[0]
+    if DRY:
+        _preview([post, story], LEGENDA)
+        return
+    _push(f"lancamento {stamp}")
+    from instagram import IG
+    ig = IG()
+    print("Post de lançamento:", ig.post_image(_url(post), LEGENDA))
+    time.sleep(30)
+    print("Story de lançamento:", ig.post_story(_url(story)))
+
+
 def cmd_demo():
     import art
     d = {"tipo": "NOVIDADE", "selo": "NOVIDADE NA CIDADE", "titulo": "Abriu o primeiro *bar no terraço* do Centro",
@@ -350,8 +369,8 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "demo"
     ig = [] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"]
     needs = {"post": ["ANTHROPIC_API_KEY"] + ig, "agenda": ["ANTHROPIC_API_KEY"] + ig, "reel": ig, "story": ig,
-             "clima": ["ANTHROPIC_API_KEY"] + ig, "semana": ["ANTHROPIC_API_KEY"] + ig, "comments": ["ANTHROPIC_API_KEY", "IG_ACCESS_TOKEN", "IG_USER_ID"]}
-    if not DRY and cmd not in ("fontes", "demo") and not load_cfg().get("ativo", False):
+             "clima": ["ANTHROPIC_API_KEY"] + ig, "semana": ["ANTHROPIC_API_KEY"] + ig, "lancamento": ig, "comments": ["ANTHROPIC_API_KEY", "IG_ACCESS_TOKEN", "IG_USER_ID"]}
+    if not DRY and cmd not in ("fontes", "demo", "lancamento") and not load_cfg().get("ativo", False):
         print("Robô pausado (ativo: false em config/settings.yaml). Nada foi publicado.")
         sys.exit(0)
     missing = [k for k in needs.get(cmd, []) if not os.environ.get(k)]
@@ -360,4 +379,4 @@ if __name__ == "__main__":
         sys.exit(0)
     # Feed não leva agenda (é temporária): o horário da quinta vira post normal; a agenda sai em stories na segunda.
     {"post": cmd_post, "agenda": cmd_post, "semana": cmd_semana, "reel": cmd_reel, "story": cmd_story, "clima": cmd_clima,
-     "comments": cmd_comments, "fontes": cmd_fontes, "demo": cmd_demo}[cmd]()
+     "comments": cmd_comments, "lancamento": cmd_lancamento, "fontes": cmd_fontes, "demo": cmd_demo}[cmd]()
