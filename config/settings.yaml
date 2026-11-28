@@ -24,13 +24,16 @@ bloqueados: ["morre", "morte", "morto", "homicídio", "assassin", "estupro", "su
 
 # Fontes de notícia. confiavel=true: veículo local conhecido
 fontes:
-  - {nome: "CGN", url: "https://cgn.inf.br/feed", confiavel: true}
-  - {nome: "Catve", url: "https://catve.com/feed", confiavel: true}
+  - {nome: "CGN", url: "https://cgn.inf.br/feed/", confiavel: true, local: true}
+  - {nome: "Catve", url: "https://catve.com/feed/", confiavel: true, local: true}
   - {nome: "O Paraná", url: "https://oparana.com.br/feed/", confiavel: true}
   - {nome: "Radar BO", url: "https://radarbo.com.br/feed/", confiavel: true}
   - {nome: "Tarobá", url: "https://taroba.com.br/feed", confiavel: true}
   - {nome: "Band B", url: "https://www.bandab.com.br/feed/", confiavel: true}
-  - {nome: "Prefeitura (Google)", url: "https://news.google.com/rss/search?q=site:cascavel.pr.gov.br&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: true}
+  - {nome: "Prefeitura (Google)", url: "https://news.google.com/rss/search?q=site:cascavel.pr.gov.br+when:3d&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: true, local: true}
+  - {nome: "Bing Cascavel", url: "https://www.bing.com/news/search?q=Cascavel+Paran%C3%A1&format=rss&setlang=pt-BR", confiavel: false}
+  - {nome: "Bing novidades", url: "https://www.bing.com/news/search?q=Cascavel+inaugura%C3%A7%C3%A3o+OR+abre+OR+novo&format=rss&setlang=pt-BR", confiavel: false}
+  - {nome: "Bing trânsito", url: "https://www.bing.com/news/search?q=Cascavel+radar+OR+tr%C3%A2nsito+OR+interdi%C3%A7%C3%A3o&format=rss&setlang=pt-BR", confiavel: false}
   - {nome: "Google Cascavel", url: "https://news.google.com/rss/search?q=Cascavel+Paran%C3%A1+when:2d&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: false}
   - {nome: "Google novidades", url: "https://news.google.com/rss/search?q=Cascavel+(inaugura+OR+abre+OR+novo+OR+nova+OR+inaugura%C3%A7%C3%A3o)+when:3d&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: false}
   - {nome: "Google trânsito", url: "https://news.google.com/rss/search?q=Cascavel+(radar+OR+tr%C3%A2nsito+OR+interdi%C3%A7%C3%A3o+OR+obra+OR+bloqueio)+when:3d&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: false}

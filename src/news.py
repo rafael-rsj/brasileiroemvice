@@ -67,7 +67,7 @@ def collect(max_age_h: int | None = None) -> list[dict]:
             title = _h.unescape(e.get("title", "")).strip()
             summary = _h.unescape(re.sub("<[^>]+>", " ", e.get("summary", "")))[:700]
             text = f"{title} {summary}".lower()
-            if not any(k in text for k in kws):
+            if not src.get("local") and not any(k in text for k in kws):
                 continue
             if any(b in text for b in blocked):
                 continue
@@ -77,7 +77,7 @@ def collect(max_age_h: int | None = None) -> list[dict]:
             outlet = (e.get("source") or {}).get("title", "")
             trusted = src["confiavel"] or any(v in outlet.lower() for v in LOCAIS)
             items.append({"key": key_for(title), "title": title, "summary": re.sub(r"\s+", " ", summary).strip(),
-                          "link": e.get("link"), "source": outlet or src["nome"], "trusted": trusted,
+                          "link": _unwrap(e.get("link")), "source": outlet or src["nome"], "trusted": trusted,
                           "published": datetime.fromtimestamp(time.mktime(ts), timezone.utc).isoformat() if ts else None})
             n += 1
         print(f"[fonte] {src['nome']}: {len(feed.entries)} itens, {n} de Cascavel")
@@ -87,6 +87,16 @@ def collect(max_age_h: int | None = None) -> list[dict]:
     fresh = [i for i in uniq.values() if i["key"] not in seen]
     print(f"{len(uniq)} itens do tema, {len(fresh)} novos")
     return fresh
+
+
+def _unwrap(url: str) -> str:
+    """Links do Bing Notícias vêm com o endereço real no parâmetro url=."""
+    if url and "bing.com" in url:
+        from urllib.parse import parse_qs, urlparse
+        q = parse_qs(urlparse(url).query)
+        if q.get("url"):
+            return q["url"][0]
+    return url
 
 
 def resolve(url: str) -> str:

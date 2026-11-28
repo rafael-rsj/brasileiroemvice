@@ -16,6 +16,8 @@ Regras de ouro:
 - NUNCA invente: data, horário, endereço, preço e números só se estiverem no texto das fontes.
 - Não expor pessoas: sem nomes de vítimas, suspeitos ou menores; nada de violência explícita, morte ou crime pesado.
 - Não fazer política partidária nem opinar sobre políticos.
+- Nunca fale dos limites da fonte ("o título da matéria diz", "não temos mais detalhes no texto"): diga só o que se sabe
+  e, se faltar algo importante, "mais detalhes em breve".
 - Português do Brasil, frases curtas. Títulos sem caixa alta; use *asteriscos* em 1 a 3 palavras de destaque.
 """
 
