@@ -144,3 +144,19 @@ def article_text(url: str) -> str:
         return "\n".join(t for t in txt if len(t) > 25)
     except Exception:
         return ""
+
+
+def stock_photo(query: str) -> tuple[str | None, str]:
+    """Foto genérica de licença aberta (Openverse, sem chave) quando a notícia não tem foto própria."""
+    if not query:
+        return None, ""
+    try:
+        r = requests.get("https://api.openverse.org/v1/images/", headers=UA, timeout=20,
+                         params={"q": query, "license_type": "commercial", "page_size": 20, "mature": "false"})
+        for it in r.json().get("results", []):
+            if (it.get("width") or 0) >= 1000 and (it.get("height") or 0) >= 700 and it.get("url"):
+                autor = (it.get("creator") or "").strip()[:40]
+                return it["url"], f"Foto ilustrativa: {autor + ' / ' if autor else ''}{(it.get('license') or 'cc').upper()}"
+    except Exception as e:
+        print("Foto genérica falhou:", e)
+    return None, ""

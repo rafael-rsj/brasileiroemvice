@@ -352,20 +352,32 @@ def story_semana_cover(periodo, eventos):
 
 
 def story_semana_item(e, i, total):
-    rows = "".join(f'<div style="margin-top:34px"><div class="lbl">{lbl}</div><div class="val" style="font-size:46px">{esc(v)}</div></div>'
+    """Um evento por story. Com foto (banner, atração ou edição anterior), a foto ocupa o topo e o layout desce."""
+    rows = "".join(f'<div style="margin-top:28px"><div class="lbl">{lbl}</div><div class="val" style="font-size:44px">{esc(v)}</div></div>'
                    for lbl, v in [("QUANDO", e.get("quando")), ("ENTRADA", e.get("preco"))] if v)
     cat = (e.get("categoria") or "ROLÊ").upper()
-    return page(f'''<div class="abs" style="inset:0;background:{K}"></div>{texture(e["nome"] + str(i), 1080, 1920)}
+    dest = "".join(f'<div style="font-weight:600;font-size:34px;color:#d6d6d6;margin-top:12px">'
+                   f'<span style="color:{Y}">•</span> {esc(x)}</div>' for x in (e.get("destaques") or [])[:2] if x)
+    img = e.get("img")
+    top = 830 if img else 380
+    foto = (f'''<img class="abs" src="{esc(img)}" style="left:0;top:0;width:1080px;height:1000px;object-fit:cover">
+      <div class="abs" style="left:0;right:0;top:0;height:300px;background:linear-gradient(180deg,rgba(17,17,17,.7),rgba(17,17,17,0))"></div>
+      <div class="abs" style="left:0;right:0;top:620px;height:380px;background:linear-gradient(180deg,rgba(17,17,17,0),{K})"></div>
+''' if img else "")
+    rod = " · ".join(x for x in [("Fonte: " + e["fonte"]) if e.get("fonte") else "", e.get("credito", "") if img else ""] if x)
+    tex = "" if img else texture(e["nome"] + str(i), 1080, 1920)
+    return page(f'''<div class="abs" style="inset:0;background:{K}"></div>{tex}{foto}
       <div class="abs" style="left:56px;top:130px">{seal()}</div>
-      <div class="abs" style="right:56px;top:150px;font-weight:800;font-size:30px;color:#777">{i}/{total}</div>
-      <div class="abs" style="left:56px;right:56px;top:380px">
-        <span class="tag" style="background:transparent;color:#fff;border:3px solid #fff;font-size:30px">{esc(cat)}</span>
-        <h1 style="font-size:{fs(e["nome"], [(18, 140), (32, 112), (999, 92)])}px;margin-top:34px">{esc(e["nome"])}</h1>
-        {f'<div style="font-weight:800;font-size:46px;color:{Y};margin-top:22px">📍 {esc(e["onde"])}</div>' if e.get("onde") else ''}
-        <div class="box" style="margin-top:60px">{rows}</div>
-        <div style="font-weight:700;font-size:42px;color:{Y};margin-top:50px;line-height:1.3">{esc(e.get("por_que_ir", ""))}</div>
+      <div class="abs" style="right:56px;top:150px;font-weight:800;font-size:30px;color:{"#fff" if img else "#777"}">{i}/{total}</div>
+      <div class="abs" style="left:56px;right:56px;top:{top}px">
+        <span class="tag" style="background:{K if img else "transparent"};color:#fff;border:3px solid #fff;font-size:30px">{esc(cat)}</span>
+        <h1 style="font-size:{fs(e["nome"], [(18, 128 if img else 140), (32, 104 if img else 112), (999, 86 if img else 92)])}px;margin-top:30px">{esc(e["nome"])}</h1>
+        {f'<div style="font-weight:800;font-size:44px;color:{Y};margin-top:20px">📍 {esc(e["onde"])}</div>' if e.get("onde") else ''}
+        <div class="box" style="margin-top:{36 if img else 60}px;padding:22px 36px 30px">{rows}</div>
+        {f'<div style="font-weight:700;font-size:40px;color:{Y};margin-top:36px;line-height:1.3">{esc(e.get("por_que_ir", ""))}</div>' if e.get("por_que_ir") else ''}
+        {dest}
       </div>
-      <div class="abs" style="left:56px;bottom:140px;font-weight:500;font-size:17px;color:#666">{esc("Fonte: " + e.get("fonte", "")) if e.get("fonte") else ""}</div>''', h=1920)
+      <div class="abs" style="left:56px;bottom:140px;font-weight:500;font-size:17px;color:#666">{esc(rod)}</div>''', h=1920)
 
 
 def story_weather(w):

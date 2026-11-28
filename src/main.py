@@ -54,6 +54,9 @@ def _git(paths, msg):
         return
     subprocess.run(["git", "config", "user.name", "guizo-bot"], check=True)
     subprocess.run(["git", "config", "user.email", "bot@users.noreply.github.com"], check=True)
+    paths = [x for x in paths if (ROOT / x).exists()]  # na 1ª vez a pasta state ainda não existe
+    if not paths:
+        return
     subprocess.run(["git", "add", *paths], check=True)
     subprocess.run(["git", "commit", "-m", msg], check=False)
     subprocess.run(["git", "pull", "--rebase"], check=False)
@@ -126,6 +129,9 @@ def cmd_post():
         if f:
             img, credit = f, f"Foto: {u['source']}"
             break
+    if not img and data["tipo"] != "ALERTA" and len(hist) % 2 == 0:  # metade das sem foto ganha foto ilustrativa
+        from news import stock_photo
+        img, credit = stock_photo(data.get("busca_foto", ""))
     kind = "alert" if data["tipo"] == "ALERTA" else ("photo" if img else "text")
     carrossel = bool(data.get("slide2_texto")) and (len(hist) % 3 != 2)  # 2 de cada 3 em carrossel
     cover = {"photo": lambda: art.cover_photo(data, img, credit, swipe=carrossel),
@@ -281,6 +287,10 @@ def cmd_semana():
         print("Poucos eventos confiáveis para a semana.")
         return
     evs = a["eventos"][:7]
+    from news import stock_photo
+    for e in evs:
+        if not e.get("img") and e.get("busca_foto"):
+            e["img"], e["credito"] = stock_photo(e["busca_foto"])
     pages = [art.story_semana_cover(periodo_arte, evs)] + [art.story_semana_item(e, i + 1, len(evs)) for i, e in enumerate(evs)]
     stamp = _stamp()
     files = art.shoot(pages, ROOT / "media" / stamp[:6] / f"{stamp}-semana", "semana", h=1920)

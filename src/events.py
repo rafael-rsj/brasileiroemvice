@@ -7,6 +7,13 @@ from playwright.sync_api import sync_playwright
 from news import _fetch_feed, load_cfg
 
 
+# Fotos dos cards de evento (banner da divulgação), com o texto do card para a IA casar com o evento certo
+IMGS_JS = """() => [...document.images].filter(i => (i.naturalWidth || i.width) >= 300)
+  .map(i => { const a = i.closest('a') || i.parentElement; let src = i.currentSrc || i.src;
+    return {src, t: ((i.alt || '') + ' ' + (a ? a.innerText : '')).replace(/\\s+/g, ' ').trim().slice(0, 90)} })
+  .filter(x => x.src.startsWith('http') && !/logo|icon|avatar|sprite|banner-app/i.test(x.src))"""
+
+
 def read_sources(max_chars: int = 9000) -> list[dict]:
     cfg = load_cfg()
     out = []
@@ -27,10 +34,12 @@ def read_sources(max_chars: int = 9000) -> list[dict]:
                         pg.mouse.wheel(0, 4000)
                         pg.wait_for_timeout(1200)
                     txt = pg.inner_text("body")
+                    imgs = pg.evaluate(IMGS_JS)
                 txt = re.sub(r"\n{2,}", "\n", txt)[:max_chars]
                 print(f"[agenda] {src['nome']}: {len(txt)} caracteres")
                 if len(txt) > 200:
-                    out.append({"fonte": src["nome"], "url": src["url"], "texto": txt})
+                    out.append({"fonte": src["nome"], "url": src["url"], "texto": txt,
+                                "imagens": imgs[:40] if "news.google." not in src["url"] else []})
             except Exception as e:
                 print(f"[agenda falhou] {src['nome']}: {e}")
         b.close()

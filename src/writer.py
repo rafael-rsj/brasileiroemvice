@@ -94,6 +94,7 @@ Responda SOMENTE em JSON:
  "fonte_principal": "nome do veículo",
  "legenda": "legenda: 1ª linha gancho curto com 1 emoji; linha em branco; 2 a 3 frases com o essencial; se tiver, linhas com 📍 local e 🗓 data; termina com uma pergunta que puxe comentário (ex: 'Você já passou por lá?'). Sem hashtags. Use \\\\n",
  "hashtags": ["até 6 hashtags locais e do assunto"],
+ "busca_foto": "2 a 4 palavras em inglês para uma foto genérica do assunto, caso a matéria não tenha foto (ex: 'police car night', 'new restaurant interior', 'water tap')",
  "story_pergunta": "pergunta curta para enquete no story (máx. 40 caracteres)",
  "reel_roteiro": "narração de 35 a 55 palavras, tom de amigo contando a novidade, termina com 'segue o guizo pra saber tudo de Cascavel'; números por extenso",
  "reel_narrar": true ou false
@@ -110,8 +111,16 @@ Responda SOMENTE em JSON:
 def write_agenda(sources: list[dict], periodo: str, recent: list[str]) -> dict | None:
     """Monta a agenda (fim de semana) a partir do texto das páginas de eventos."""
     blocos = "\n\n".join(f"### {s['fonte']} ({s['url']})\n{s['texto']}" for s in sources)
+    fotos, cat = [], []
+    for s in sources:
+        for im in s.get("imagens", []):
+            cat.append(f"[F{len(fotos)}] ({s['fonte']}) {im['t']}")
+            fotos.append({"src": im["src"], "fonte": s["fonte"]})
     prompt = f"""Textos copiados de sites de eventos e notícias de Cascavel (PR):
 {blocos[:42000]}
+
+Fotos dos cards de evento encontradas nessas páginas (código e texto do card):
+{chr(10).join(cat[:120]) or '- nenhuma'}
 
 Monte a agenda de "{periodo}" em Cascavel. Use SOMENTE eventos que estão nos textos acima, com data dentro desse
 período (ou em cartaz o período todo). Não invente data, horário, local nem preço: se não souber, deixe vazio.
@@ -122,13 +131,17 @@ Responda SOMENTE em JSON:
 {{
  "skip": false,
  "titulo_capa": "ex: 'O que fazer em *Cascavel*' (máx. 34 caracteres)",
- "eventos": [{{"nome": "nome do evento (máx. 46 caracteres)", "dia": "dia curto, ex: 'SEX 05'", "quando": "ex: 'sáb, 29/11 · 20h'", "onde": "local", "preco": "ex: 'grátis', 'a partir de R$ 40' ou vazio", "categoria": "SHOW|FESTA|TEATRO|FEIRA|GASTRONOMIA|ESPORTE|FAMÍLIA|CULTURA", "por_que_ir": "1 frase curta e animada (máx. 90 caracteres)", "fonte": "nome do site de onde veio"}}] (3 a 8 eventos, em ordem de data),
+ "eventos": [{{"nome": "nome do evento (máx. 46 caracteres)", "dia": "dia curto, ex: 'SEX 05'", "quando": "ex: 'sáb, 29/11 · 20h'", "onde": "local", "preco": "ex: 'grátis', 'a partir de R$ 40' ou vazio", "categoria": "SHOW|FESTA|TEATRO|FEIRA|GASTRONOMIA|ESPORTE|FAMÍLIA|CULTURA", "por_que_ir": "1 frase curta e animada (máx. 90 caracteres)", "destaques": ["0 a 2 detalhes curtos do que vai ter, só se estiver no texto (máx. 45 caracteres cada), ex: 'food trucks', 'brinquedos para as crianças'"], "foto": "código F da foto do card DESTE evento (banner, atração, edição anterior) ou vazio se não tiver certeza que é dele", "busca_foto": "se não houver foto: 2 a 4 palavras em inglês para uma foto genérica do tipo de evento (ex: 'stand up comedy stage', 'farmers market outdoor')", "fonte": "nome do site de onde veio"}}] (3 a 8 eventos, em ordem de data),
  "legenda": "legenda: 1ª linha gancho com 1 emoji; linha em branco; lista dos eventos, um por linha, com emoji da categoria, nome, dia e local; termina com 'Marca quem vai com você 👇' e 'Tem evento? Manda no direct que a gente divulga'. Sem hashtags. Use \\\\n",
  "hashtags": ["até 6 hashtags"]
 }}"""
-    data = _ask(prompt, 5000)
+    data = _ask(prompt, 6000)
     if data.get("skip") or len(data.get("eventos", [])) < 3:
         return None
+    for e in data["eventos"]:
+        m = re.fullmatch(r"F(\d+)", str(e.get("foto", "")).strip())
+        e["img"], e["credito"] = (fotos[int(m.group(1))]["src"], f"Foto: divulgação/{fotos[int(m.group(1))]['fonte']}") \
+            if m and int(m.group(1)) < len(fotos) else (None, "")
     return data
 
 
