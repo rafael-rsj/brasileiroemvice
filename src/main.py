@@ -275,6 +275,9 @@ def cmd_clima():
     print("Story do clima publicado:", IG().post_story(_url(f)))
 
 
+DIAS_PT = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
+
+
 def _semana():
     now = datetime.now(BRT)
     seg = now - timedelta(days=now.weekday())
@@ -283,13 +286,22 @@ def _semana():
             f"{seg.day:02d}/{seg.month:02d} a {dom.day:02d}/{dom.month:02d}")
 
 
-def cmd_semana():
+def cmd_hoje():
+    """Sábado e domingo de manhã: o que tem pra fazer HOJE em Cascavel, em stories."""
+    cmd_semana(hoje=True)
+
+
+def cmd_semana(hoje=False):
     """Segunda de manhã: o que vai ter na semana, em stories (fica no destaque A SEMANA, que você fixa na mão)."""
     import art
     from events import read_sources
     from writer import write_agenda
     hist = _load(AGENDAS, [])
     periodo_ia, periodo_arte = _semana()
+    if hoje:
+        d = datetime.now(BRT)
+        periodo_ia = f"hoje, {DIAS_PT[d.weekday()]} {d.day:02d}/{d.month:02d} (só eventos de hoje, inclusive à noite)"
+        periodo_arte = f"{DIAS_PT[d.weekday()]}, {d.day:02d}/{d.month:02d}"
     a = write_agenda(read_sources(), periodo_ia, [h["titulo"] for h in hist])
     if not a:
         print("Poucos eventos confiáveis para a semana.")
@@ -299,7 +311,7 @@ def cmd_semana():
     for e in evs:
         if not e.get("img"):
             e["img"], e["credito"] = event_photo(e["nome"])
-    pages = [art.story_semana_cover(periodo_arte, evs)] + [art.story_semana_item(e, i + 1, len(evs)) for i, e in enumerate(evs)]
+    pages = [art.story_semana_cover(periodo_arte, evs, "Hoje em" if hoje else "A semana em")] + [art.story_semana_item(e, i + 1, len(evs)) for i, e in enumerate(evs)]
     stamp = _stamp()
     files = art.shoot(pages, ROOT / "media" / stamp[:6] / f"{stamp}-semana", "semana", h=1920)
     if DRY:
@@ -405,7 +417,7 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "demo"
     ig = [] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"]
     needs = {"post": ["ANTHROPIC_API_KEY"] + ig, "agenda": ["ANTHROPIC_API_KEY"] + ig, "reel": ig, "story": ig,
-             "clima": ["ANTHROPIC_API_KEY"] + ig, "semana": ["ANTHROPIC_API_KEY"] + ig, "lancamento": ig, "comments": ["ANTHROPIC_API_KEY", "IG_ACCESS_TOKEN", "IG_USER_ID"]}
+             "clima": ["ANTHROPIC_API_KEY"] + ig, "semana": ["ANTHROPIC_API_KEY"] + ig, "hoje": ["ANTHROPIC_API_KEY"] + ig, "lancamento": ig, "comments": ["ANTHROPIC_API_KEY", "IG_ACCESS_TOKEN", "IG_USER_ID"]}
     if not DRY and cmd not in ("fontes", "demo", "lancamento", "fbteste") and not load_cfg().get("ativo", False):
         print("Robô pausado (ativo: false em config/settings.yaml). Nada foi publicado.")
         sys.exit(0)
@@ -414,5 +426,5 @@ if __name__ == "__main__":
         print(f"Aguardando configuração: faltam os secrets {missing}. Nada foi feito.")
         sys.exit(0)
     # Feed não leva agenda (é temporária): o horário da quinta vira post normal; a agenda sai em stories na segunda.
-    {"post": cmd_post, "agenda": cmd_post, "semana": cmd_semana, "reel": cmd_reel, "story": cmd_story, "clima": cmd_clima,
+    {"post": cmd_post, "agenda": cmd_post, "semana": cmd_semana, "hoje": cmd_hoje, "reel": cmd_reel, "story": cmd_story, "clima": cmd_clima,
      "comments": cmd_comments, "lancamento": cmd_lancamento, "fbteste": cmd_fbteste, "fontes": cmd_fontes, "demo": cmd_demo}[cmd]()

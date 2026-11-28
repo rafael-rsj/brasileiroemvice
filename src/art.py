@@ -346,7 +346,7 @@ def _onde(e):
             if e.get("onde") else "")
 
 
-def story_semana_cover(periodo, eventos):
+def story_semana_cover(periodo, eventos, titulo="A semana em"):
     """1º story da segunda: a semana em Cascavel (vai para o destaque A SEMANA)."""
     lista = "".join(f'<div style="display:flex;gap:22px;align-items:baseline;margin-top:26px">'
                     f'<span style="font-weight:800;font-size:30px;color:{Y};min-width:150px">{esc(e.get("dia", ""))}</span>'
@@ -356,7 +356,7 @@ def story_semana_cover(periodo, eventos):
       <div class="abs" style="left:56px;top:130px">{seal()}</div>
       <div class="abs" style="left:56px;right:56px;top:300px">
         <div style="font-weight:800;font-size:34px;letter-spacing:4px;color:{Y}">{esc(periodo.upper())}</div>
-        <h1 style="font-size:130px;margin-top:20px">A semana em<br><span style="background:{Y};color:{K};padding:0 14px">Cascavel</span></h1>
+        <h1 style="font-size:130px;margin-top:20px">{titulo}<br><span style="background:{Y};color:{K};padding:0 14px">Cascavel</span></h1>
         <div style="margin-top:60px">{lista}</div>
       </div>
 ''', h=1920)
