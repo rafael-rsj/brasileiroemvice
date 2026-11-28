@@ -95,6 +95,7 @@ Responda SOMENTE em JSON:
  "slide2_texto": "3 a 4 frases explicando o que se sabe, útil para o morador (máx. 400 caracteres)",
  "fonte_principal": "nome do veículo",
  "legenda": "legenda: 1ª linha gancho curto com 1 emoji; linha em branco; 2 a 3 frases com o essencial; se tiver, linhas com 📍 local e 🗓 data; termina com uma pergunta que puxe comentário (ex: 'Você já passou por lá?'). Sem hashtags. Use \\\\n",
+ "legenda_facebook": "versão para a Página do Facebook, público de 30 a 60 anos de Cascavel: tom claro e informativo, sem gíria e sem 'POV'; 3 a 5 frases com o que aconteceu, onde, quando e por que importa (trânsito, serviço, segurança, família); se tiver, 📍 e 🗓; termina com uma pergunta simples para comentar. Sem hashtags. Use \\\\n",
  "hashtags": ["até 6 hashtags locais e do assunto"],
  "busca_foto": "2 a 4 palavras em inglês para foto ilustrativa SEM PESSOAS (objeto ou lugar), caso a matéria não tenha foto (ex: 'police car lights', 'speed camera road', 'water tap'); vazio se não fizer sentido",
  "story_pergunta": "pergunta curta para enquete no story (máx. 40 caracteres)",

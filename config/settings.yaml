@@ -60,3 +60,6 @@ radar_limite_dia: 25
 radar_perfis: [noticiascascavel, cascavelemfatos, rolezandocascavel, cascavel_prefa, tour.cascavel, cascavel.spotted,
                catuaipalladium, festvalcascavel, baladascascavelense, frajolacascaveloficial, magnata.boteco,
                esquentapubcascavel, comancheamericanpub, likebaroficial, terrazzorooftopbar, cinelasercascavel]
+
+# Página do Facebook (o robô repete o post do feed lá, com legenda para 30 a 60 anos)
+facebook_page_id: "61596907235722"

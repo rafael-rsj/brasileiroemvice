@@ -164,6 +164,14 @@ def cmd_post():
     ig = IG()
     mid = ig.post_carousel([_url(x) for x in slides], caption) if len(slides) > 1 else ig.post_image(_url(slides[0]), caption)
     print("Publicado:", mid)
+    page = cfg.get("facebook_page_id")
+    if page:
+        try:
+            import facebook
+            fb_txt = (data.get("legenda_facebook") or data["legenda"]) + f"\n\nFonte: {data.get('fonte_principal', '')}\nSiga o Guizo Cascavel para saber tudo da cidade."
+            print("Facebook:", facebook.publicar(str(page), [_url(x) for x in slides], fb_txt))
+        except Exception as e:
+            print("Facebook pulado:", e)
 
 
 # ------------------------------------------------------------------ agenda
@@ -371,6 +379,17 @@ def cmd_lancamento():
     print("Story de lançamento:", ig.post_story(_url(story)))
 
 
+def cmd_fbteste():
+    """Só confere se o robô consegue falar com a Página do Facebook (não publica nada)."""
+    import facebook
+    page = str(load_cfg().get("facebook_page_id", ""))
+    try:
+        facebook._page_token(page)
+        print("Facebook OK: o robô tem acesso à Página", page)
+    except Exception as e:
+        print("Facebook SEM acesso:", e)
+
+
 def cmd_demo():
     import art
     d = {"tipo": "NOVIDADE", "selo": "NOVIDADE NA CIDADE", "titulo": "Abriu o primeiro *bar no terraço* do Centro",
@@ -387,7 +406,7 @@ if __name__ == "__main__":
     ig = [] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"]
     needs = {"post": ["ANTHROPIC_API_KEY"] + ig, "agenda": ["ANTHROPIC_API_KEY"] + ig, "reel": ig, "story": ig,
              "clima": ["ANTHROPIC_API_KEY"] + ig, "semana": ["ANTHROPIC_API_KEY"] + ig, "lancamento": ig, "comments": ["ANTHROPIC_API_KEY", "IG_ACCESS_TOKEN", "IG_USER_ID"]}
-    if not DRY and cmd not in ("fontes", "demo", "lancamento") and not load_cfg().get("ativo", False):
+    if not DRY and cmd not in ("fontes", "demo", "lancamento", "fbteste") and not load_cfg().get("ativo", False):
         print("Robô pausado (ativo: false em config/settings.yaml). Nada foi publicado.")
         sys.exit(0)
     missing = [k for k in needs.get(cmd, []) if not os.environ.get(k)]
@@ -396,4 +415,4 @@ if __name__ == "__main__":
         sys.exit(0)
     # Feed não leva agenda (é temporária): o horário da quinta vira post normal; a agenda sai em stories na segunda.
     {"post": cmd_post, "agenda": cmd_post, "semana": cmd_semana, "reel": cmd_reel, "story": cmd_story, "clima": cmd_clima,
-     "comments": cmd_comments, "lancamento": cmd_lancamento, "fontes": cmd_fontes, "demo": cmd_demo}[cmd]()
+     "comments": cmd_comments, "lancamento": cmd_lancamento, "fbteste": cmd_fbteste, "fontes": cmd_fontes, "demo": cmd_demo}[cmd]()
