@@ -106,6 +106,26 @@ def page(body, w=1080, h=1350):
 
 
 # ---------------------------------------------------------------- feed
+# Sistema de categorias (v1): toda capa traz a etiqueta da categoria no MESMO lugar (em cima do título),
+# sempre com a mesma cor. Quem olha a grade acha rápido o tipo de post que procura.
+CATS = {
+    "NOVIDADE": (Y, K, ""),
+    "BOMBOU": ("#fff", K, ""),
+    "POLICIA": (R, "#fff", ""),
+    "ALERTA": (R, "#fff", ""),
+    "CIDADE": ("transparent", Y, f"border:3px solid {Y};"),
+    "EVENTO": ("transparent", "#fff", "border:3px solid #fff;"),
+}
+NOMES = {"POLICIA": "POLÍCIA"}
+
+
+def cat_tag(d, size=28):
+    tipo = (d.get("tipo") or "NOVIDADE").upper().replace("Í", "I")
+    bg, fg, extra = CATS.get(tipo, CATS["NOVIDADE"])
+    return (f'<span class="tag" style="background:{bg};color:{fg};font-size:{size}px;{extra}">'
+            f'{NOMES.get(tipo, tipo)}</span>')
+
+
 def cover_photo(d, img, credit="", swipe=False, h=1350):
     """Capa com foto (novidade, evento, cidade)."""
     t = d["titulo"]
@@ -114,7 +134,7 @@ def cover_photo(d, img, credit="", swipe=False, h=1350):
       <div class="abs" style="inset:0;background:linear-gradient(180deg,rgba(0,0,0,.45) 0,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 42%,rgba(0,0,0,.86) 70%,#000 100%)"></div>
       <div class="abs" style="left:56px;top:52px">{seal()}</div>
       <div class="abs" style="left:56px;right:56px;bottom:{150 if h == 1350 else 380}px">
-        <span class="tag" style="background:{Y};color:{K}">{esc(d.get("selo", "NOVIDADE"))}</span>
+        {cat_tag(d)}
         <h1 style="font-size:{fs(t, [(34, 128), (52, 110), (999, 92)])}px;margin-top:26px">{mark(t)}</h1>
         {f'<div style="font-weight:600;font-size:34px;color:rgba(255,255,255,.88);margin-top:24px">📍 {esc(info)}</div>' if info else ''}
       </div>
@@ -136,7 +156,7 @@ def cover_alert(d, swipe=False, h=1350):
         rows += f'<div class="lbl">🗓 QUANDO</div><div class="val">{esc(d["quando"])}</div>'
     top = 0 if h == 1350 else 120
     return page(f'''<div class="zebra" style="top:{top}px"></div>
-      <div class="abs" style="left:56px;top:{top + 170}px"><span class="tag" style="background:{R};color:#fff">⚠ {esc(d.get("selo", "ALERTA"))}</span></div>
+      <div class="abs" style="left:56px;top:{top + 170}px">{cat_tag(d)}</div>
       <h1 class="abs" style="left:56px;right:56px;top:{top + 270}px;font-size:{fs(t, [(26, 140), (44, 118), (999, 96)])}px">{mark(t)}</h1>
       {f'<div class="abs box" style="left:56px;right:56px;bottom:{170 if h == 1350 else 420}px">{rows}</div>' if rows else ''}
       <div class="abs" style="left:56px;bottom:{40 if h == 1350 else 260}px">{seal(dark=False)}</div>
@@ -155,7 +175,7 @@ def cover_text(d, swipe=False, h=1350):
       <div class="abs" style="left:0;right:0;top:{440 if h == 1350 else 750}px;height:260px;background:linear-gradient(180deg,rgba(17,17,17,0),#111)"></div>
       <div class="abs" style="left:56px;top:52px">{seal()}</div>
       <div class="abs" style="left:56px;right:56px;bottom:{150 if h == 1350 else 380}px">
-        <span class="tag" style="background:{Y};color:{K}">{esc(d.get("selo", "NOVIDADE"))}</span>
+        {cat_tag(d)}
         <h1 style="font-size:{fs(t, [(34, 124), (52, 106), (999, 90)])}px;margin-top:26px">{mark(t)}</h1>
         <div style="font-weight:600;font-size:34px;color:rgba(255,255,255,.85);margin-top:22px;line-height:1.3">{esc(d.get("subtitulo", ""))}</div>
         {f'<div style="font-weight:700;font-size:32px;color:{Y};margin-top:14px">📍 {esc(info)}</div>' if info else ''}
@@ -238,6 +258,37 @@ def story_from(kind, d, img=None, credit=""):
     banner = (f'<div class="abs" style="left:0;right:0;bottom:120px;display:flex;justify-content:center">'
               f'<span class="tag" style="background:{Y};color:{K};font-size:32px">👆 POST NOVO NO FEED</span></div>')
     return body.replace("</body>", banner + "</body>")
+
+
+def story_semana_cover(periodo, eventos):
+    """1º story da segunda: a semana em Cascavel (vai para o destaque A SEMANA)."""
+    lista = "".join(f'<div style="display:flex;gap:22px;align-items:baseline;margin-top:26px">'
+                    f'<span style="font-weight:800;font-size:30px;color:{Y};min-width:150px">{esc(e.get("dia", ""))}</span>'
+                    f'<span style="font-weight:700;font-size:38px;line-height:1.2">{esc(e["nome"])}</span></div>' for e in eventos[:7])
+    return page(f'''<div class="abs" style="inset:0;background:{K}"></div>
+      <div class="abs" style="left:56px;top:130px">{seal()}</div>
+      <div class="abs" style="left:56px;right:56px;top:300px">
+        <div style="font-weight:800;font-size:34px;letter-spacing:4px;color:{Y}">{esc(periodo.upper())}</div>
+        <h1 style="font-size:130px;margin-top:20px">A semana em<br><span style="background:{Y};color:{K};padding:0 14px">Cascavel</span></h1>
+        <div style="margin-top:60px">{lista}</div>
+      </div>
+      <div class="abs" style="left:0;right:0;bottom:150px;text-align:center;font-weight:800;font-size:30px;letter-spacing:3px;color:#9a9a9a">TOCA PRA VER CADA UM →</div>''', h=1920)
+
+
+def story_semana_item(e, i, total):
+    rows = "".join(f'<div style="margin-top:34px"><div class="lbl">{lbl}</div><div class="val" style="font-size:46px">{esc(v)}</div></div>'
+                   for lbl, v in [("QUANDO", e.get("quando")), ("ONDE", e.get("onde")), ("ENTRADA", e.get("preco"))] if v)
+    cat = (e.get("categoria") or "ROLÊ").upper()
+    return page(f'''<div class="abs" style="inset:0;background:{K}"></div>
+      <div class="abs" style="left:56px;top:130px">{seal()}</div>
+      <div class="abs" style="right:56px;top:150px;font-weight:800;font-size:30px;color:#777">{i}/{total}</div>
+      <div class="abs" style="left:56px;right:56px;top:380px">
+        <span class="tag" style="background:transparent;color:#fff;border:3px solid #fff;font-size:30px">{esc(cat)}</span>
+        <h1 style="font-size:{fs(e["nome"], [(18, 140), (32, 112), (999, 92)])}px;margin-top:34px">{esc(e["nome"])}</h1>
+        <div class="box" style="margin-top:60px">{rows}</div>
+        <div style="font-weight:700;font-size:42px;color:{Y};margin-top:50px;line-height:1.3">{esc(e.get("por_que_ir", ""))}</div>
+      </div>
+      <div class="abs" style="left:56px;bottom:150px;font-weight:600;font-size:26px;color:#777">{esc("Fonte: " + e.get("fonte", "")) if e.get("fonte") else ""}</div>''', h=1920)
 
 
 def story_weather(w):

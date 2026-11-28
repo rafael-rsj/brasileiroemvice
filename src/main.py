@@ -238,18 +238,63 @@ def cmd_story():
 
 
 def cmd_clima():
+    """07:10. Segunda: stories "A semana em Cascavel". Todo dia: story do tempo só se o clima fugir do normal."""
     import art
     from weather import today
+    if datetime.now(BRT).weekday() == 0:
+        try:
+            cmd_semana()
+        except Exception as e:  # a agenda não pode derrubar o clima
+            print("Semana falhou:", e)
     w = today()
+    print("Clima:", w)
+    if not w.get("extremo") and not os.environ.get("FORCAR_CLIMA"):
+        print("Tempo normal hoje: sem story de clima.")
+        return
     stamp = _stamp()
     f = art.shoot([art.story_weather(w)], ROOT / "media" / stamp[:6] / f"{stamp}-clima", "clima", h=1920)[0]
-    print("Clima:", w)
     if DRY:
         _preview([f], json.dumps(w, ensure_ascii=False))
         return
     _push(f"clima {stamp}")
     from instagram import IG
     print("Story do clima publicado:", IG().post_story(_url(f)))
+
+
+def _semana():
+    now = datetime.now(BRT)
+    seg = now - timedelta(days=now.weekday())
+    dom = seg + timedelta(days=6)
+    return (f"semana de segunda {seg.day:02d}/{seg.month:02d} a domingo {dom.day:02d}/{dom.month:02d}",
+            f"{seg.day:02d}/{seg.month:02d} a {dom.day:02d}/{dom.month:02d}")
+
+
+def cmd_semana():
+    """Segunda de manhã: o que vai ter na semana, em stories (fica no destaque A SEMANA, que você fixa na mão)."""
+    import art
+    from events import read_sources
+    from writer import write_agenda
+    hist = _load(AGENDAS, [])
+    periodo_ia, periodo_arte = _semana()
+    a = write_agenda(read_sources(), periodo_ia, [h["titulo"] for h in hist])
+    if not a:
+        print("Poucos eventos confiáveis para a semana.")
+        return
+    evs = a["eventos"][:7]
+    pages = [art.story_semana_cover(periodo_arte, evs)] + [art.story_semana_item(e, i + 1, len(evs)) for i, e in enumerate(evs)]
+    stamp = _stamp()
+    files = art.shoot(pages, ROOT / "media" / stamp[:6] / f"{stamp}-semana", "semana", h=1920)
+    if DRY:
+        _preview(files, json.dumps(evs, ensure_ascii=False)[:2000])
+        return
+    hist.append({"titulo": periodo_ia, "quando": stamp, "eventos": [e["nome"] for e in evs]})
+    _save(AGENDAS, hist[-100:])
+    _push(f"semana {stamp}")
+    from instagram import IG
+    ig = IG()
+    for f in files:
+        print("Story da semana:", ig.post_story(_url(f)))
+        time.sleep(20)
 
 
 def cmd_comments():
@@ -305,7 +350,7 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "demo"
     ig = [] if DRY else ["IG_ACCESS_TOKEN", "IG_USER_ID"]
     needs = {"post": ["ANTHROPIC_API_KEY"] + ig, "agenda": ["ANTHROPIC_API_KEY"] + ig, "reel": ig, "story": ig,
-             "clima": ig, "comments": ["ANTHROPIC_API_KEY", "IG_ACCESS_TOKEN", "IG_USER_ID"]}
+             "clima": ["ANTHROPIC_API_KEY"] + ig, "semana": ["ANTHROPIC_API_KEY"] + ig, "comments": ["ANTHROPIC_API_KEY", "IG_ACCESS_TOKEN", "IG_USER_ID"]}
     if not DRY and cmd not in ("fontes", "demo") and not load_cfg().get("ativo", False):
         print("Robô pausado (ativo: false em config/settings.yaml). Nada foi publicado.")
         sys.exit(0)
@@ -313,5 +358,6 @@ if __name__ == "__main__":
     if missing:
         print(f"Aguardando configuração: faltam os secrets {missing}. Nada foi feito.")
         sys.exit(0)
-    {"post": cmd_post, "agenda": cmd_agenda, "reel": cmd_reel, "story": cmd_story, "clima": cmd_clima,
+    # Feed não leva agenda (é temporária): o horário da quinta vira post normal; a agenda sai em stories na segunda.
+    {"post": cmd_post, "agenda": cmd_post, "semana": cmd_semana, "reel": cmd_reel, "story": cmd_story, "clima": cmd_clima,
      "comments": cmd_comments, "fontes": cmd_fontes, "demo": cmd_demo}[cmd]()

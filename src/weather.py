@@ -33,6 +33,16 @@ def today() -> dict:
         dica = "Calorão! Água na garrafinha e fim de tarde no Lago 💧"
     else:
         dica = "Tempo bom pra rolê. Bora aproveitar o dia 😎"
+    # Clima só vira story quando foge do normal (o celular de todo mundo já tem app do tempo)
+    motivo = ""
+    if mx >= 33:
+        motivo, dica = "calor", "Calorão fora do normal. Água na garrafinha e sombra 💧"
+    elif mn <= 5:
+        motivo, dica = "frio", "Frio de verdade: casaco, meia grossa e chimarrão 🧉"
+    elif chuva >= 85 and int(d["weather_code"][0]) in (65, 81, 82, 95, 96, 99):
+        motivo, dica = "temporal", "Previsão de chuva forte. Cuidado com as avenidas alagadas 🌧"
+    elif vento >= 50:
+        motivo, dica = "vento", "Ventania forte prevista. Atenção com galho e destelhamento 💨"
     now = datetime.now(timezone(timedelta(hours=-3)))
-    return {"max": mx, "min": mn, "chuva": chuva, "vento": vento, "descricao": desc, "dica": dica,
+    return {"max": mx, "min": mn, "chuva": chuva, "vento": vento, "descricao": desc, "dica": dica, "extremo": motivo,
             "dia": f"{DIAS[now.weekday()]}, {now.day} de {MESES[now.month - 1]}"}

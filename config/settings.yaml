@@ -17,9 +17,8 @@ ia:
 palavras_chave: ["cascavel", "lago municipal", "show rural", "catuaí shopping", "jl shopping", "unioeste cascavel",
                  "teatro municipal de cascavel", "parque tarquínio", "avenida brasil", "rua paraná", "transitar"]
 
-# Assuntos que a página NÃO publica (para não virar página policial nem de política)
-bloqueados: ["morre", "morte", "morto", "homicídio", "assassin", "estupro", "suicíd", "cadáver", "corpo encontrado",
-             "facada", "esfaque", "baleado", "tiroteio", "pedofil", "abuso sexual", "violência doméstica",
+# Palavras que barram a notícia de vez (caso policial que repercutiu pode entrar; estes temas não)
+bloqueados: ["suicíd", "estupro", "pedofil", "abuso sexual", "cadáver", "corpo encontrado", "esquartej",
              "candidato", "eleição", "partido", "deputado", "vereador critica"]
 
 # Fontes de notícia. confiavel=true: veículo local conhecido
@@ -33,10 +32,10 @@ fontes:
   - {nome: "Prefeitura (Google)", url: "https://news.google.com/rss/search?q=site:cascavel.pr.gov.br+when:3d&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: true, local: true}
   - {nome: "Bing Cascavel", url: "https://www.bing.com/news/search?q=Cascavel+Paran%C3%A1&format=rss&setlang=pt-BR", confiavel: false}
   - {nome: "Bing novidades", url: "https://www.bing.com/news/search?q=Cascavel+inaugura%C3%A7%C3%A3o+OR+abre+OR+novo&format=rss&setlang=pt-BR", confiavel: false}
-  - {nome: "Bing trânsito", url: "https://www.bing.com/news/search?q=Cascavel+radar+OR+tr%C3%A2nsito+OR+interdi%C3%A7%C3%A3o&format=rss&setlang=pt-BR", confiavel: false}
+  - {nome: "Bing repercussão", url: "https://www.bing.com/news/search?q=Cascavel+pol%C3%ADcia+OR+pol%C3%AAmica+OR+viraliza+OR+flagra&format=rss&setlang=pt-BR", confiavel: false}
   - {nome: "Google Cascavel", url: "https://news.google.com/rss/search?q=Cascavel+Paran%C3%A1+when:2d&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: false}
   - {nome: "Google novidades", url: "https://news.google.com/rss/search?q=Cascavel+(inaugura+OR+abre+OR+novo+OR+nova+OR+inaugura%C3%A7%C3%A3o)+when:3d&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: false}
-  - {nome: "Google trânsito", url: "https://news.google.com/rss/search?q=Cascavel+(radar+OR+tr%C3%A2nsito+OR+interdi%C3%A7%C3%A3o+OR+obra+OR+bloqueio)+when:3d&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: false}
+  - {nome: "Google trânsito", url: "https://news.google.com/rss/search?q=Cascavel+(tr%C3%A2nsito+OR+interdi%C3%A7%C3%A3o+OR+falta+de+%C3%A1gua+OR+bloqueio+OR+pol%C3%ADcia)+when:3d&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: false}
   - {nome: "Google eventos", url: "https://news.google.com/rss/search?q=Cascavel+(show+OR+festival+OR+feira+OR+evento+OR+festa)+when:5d&hl=pt-BR&gl=BR&ceid=BR:pt-419", confiavel: false}
 
 # Páginas de onde sai a agenda do fim de semana (lidas com navegador, o texto vai para a IA)

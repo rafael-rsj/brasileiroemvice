@@ -7,15 +7,17 @@ import anthropic
 
 from news import load_cfg
 
-PERSONA = """Você é o editor do "guizo" (@guizocascavel), perfil de Instagram sobre o que acontece em Cascavel (PR):
-eventos e o que fazer, novidades da cidade (lugares que abriram, obras entregues, coisas novas), alertas úteis
-(radar novo ou removido, interdição, obra, falta de água/luz, mudança no trânsito) e problemas da cidade.
-O nome vem do guizo da cascavel: o barulho que avisa. Tom: cascavelense, próximo, leve e direto, com uma pitada de
-humor quando cabe; sério e respeitoso quando o assunto é problema ou acidente.
+PERSONA = """Você é o editor do "guizo" (@guizocascavel), perfil de Instagram sobre o que acontece em Cascavel (PR).
+O feed é para o que faz a pessoa querer seguir: o que bombou e todo mundo está comentando, novidades da cidade
+(lugar que abriu ou fechou, obra entregue, coisa nova), casos policiais que repercutiram muito e informação útil de
+verdade (mudança no trânsito, obra grande, falta de água ou luz). Pense no "spotted" de cidade: é o assunto do dia
+que a pessoa quer saber primeiro.
+Tom: cascavelense, próximo e direto, com humor leve quando cabe; sério e respeitoso em caso policial, acidente ou tragédia.
 Regras de ouro:
 - NUNCA invente: data, horário, endereço, preço e números só se estiverem no texto das fontes.
-- Não expor pessoas: sem nomes de vítimas, suspeitos ou menores; nada de violência explícita, morte ou crime pesado.
-- Não fazer política partidária nem opinar sobre políticos.
+- Caso policial: conte o fato sem sensacionalismo e sem detalhe gráfico. Nunca dê nome, foto ou pista de vítima,
+  de menor de idade ou de suspeito que não foi condenado; diga "um homem de 30 anos", "a polícia", "o suspeito".
+- Nada de suicídio, abuso sexual ou crime contra criança. Sem política partidária nem opinião sobre políticos.
 - Nunca fale dos limites da fonte ("o título da matéria diz", "não temos mais detalhes no texto"): diga só o que se sabe
   e, se faltar algo importante, "mais detalhes em breve".
 - Português do Brasil, frases curtas. Títulos sem caixa alta; use *asteriscos* em 1 a 3 palavras de destaque.
@@ -67,18 +69,22 @@ def pick_and_write(items: list[dict], recent_titles: list[str]) -> dict | None:
 Já postamos recentemente (não repita o assunto):
 {chr(10).join('- ' + t for t in recent_titles[-20:]) or '- nada ainda'}
 
-Escolha a pauta com MAIS potencial de engajamento para quem mora em Cascavel. Prioridade:
-1) NOVIDADE: lugar que abriu/vai abrir, obra entregue, serviço novo, coisa diferente na cidade;
-2) ALERTA: radar novo ou removido, interdição, obra que muda o trânsito, falta de água/luz, golpe circulando;
-3) EVENTO: show, feira, festival, evento gratuito, algo grande que vai movimentar a cidade;
-4) CIDADE: problema que afeta muita gente (buraco, fila, atraso de obra), curiosidade, conquista da cidade.
-Evite notícia policial comum e política. Agrupe itens do mesmo assunto. Se nada servir, responda {{"skip": true}}.
+Escolha a pauta com MAIS potencial de a pessoa parar, comentar, mandar pra alguém e seguir a página. Prioridade:
+1) BOMBOU: o assunto que a cidade inteira está comentando (fato curioso, polêmica local, flagrante, vídeo viral, algo absurdo);
+2) POLICIA: caso policial que repercutiu muito ou é muito fora do comum (não o B.O. de todo dia);
+3) NOVIDADE: lugar que abriu ou fechou, obra entregue, serviço novo, coisa diferente na cidade;
+4) ALERTA: mudança que afeta muita gente agora (bloqueio grande, falta de água/luz, golpe circulando, mudança no trânsito);
+5) CIDADE: problema ou conquista da cidade que interessa a muita gente;
+6) EVENTO: só se for muito grande (show de artista conhecido, festival que para a cidade).
+Radar só entra se for algo grande (vários radares novos, radar que todo mundo reclama); radar isolado não vale post.
+Evite notícia sem impacto, nota oficial burocrática e política. Agrupe itens do mesmo assunto.
+Se nada servir, responda {{"skip": true}}.
 Responda SOMENTE em JSON:
 {{
  "skip": false,
  "indices": [números dos itens usados],
- "tipo": "NOVIDADE|ALERTA|EVENTO|CIDADE",
- "selo": "selo curto da arte, ex: 'NOVIDADE NA CIDADE', 'RADAR NOVO', 'ALERTA NO TRÂNSITO', 'VAI TER', 'DE GRAÇA', 'ATENÇÃO' (máx. 22 caracteres)",
+ "tipo": "BOMBOU|POLICIA|NOVIDADE|ALERTA|CIDADE|EVENTO",
+ "selo": "selo curto da arte, ex: 'ABRIU', 'TODO MUNDO FALANDO', 'ATENÇÃO', 'DE GRAÇA' (máx. 22 caracteres)",
  "titulo": "título da arte com *destaque*, máx. 70 caracteres",
  "subtitulo": "1 frase de contexto, máx. 110 caracteres",
  "onde": "local/endereço se a fonte disser, senão vazio",
@@ -109,13 +115,14 @@ def write_agenda(sources: list[dict], periodo: str, recent: list[str]) -> dict |
 
 Monte a agenda de "{periodo}" em Cascavel. Use SOMENTE eventos que estão nos textos acima, com data dentro desse
 período (ou em cartaz o período todo). Não invente data, horário, local nem preço: se não souber, deixe vazio.
-Prefira variedade: show, festa, teatro, feira, gastronomia, esporte, programa gratuito, coisa para família.
+Prioridade: show bom (artista conhecido ou banda que lota), festa e balada com atração, festival, teatro, feira grande,
+programa gratuito. Diga sempre o nome da casa de show ou do local, mesmo pequeno, e o dia da semana.
 Ignore eventos de outras cidades. Se houver menos de 3 eventos confiáveis, responda {{"skip": true}}.
 Responda SOMENTE em JSON:
 {{
  "skip": false,
  "titulo_capa": "ex: 'O que fazer em *Cascavel*' (máx. 34 caracteres)",
- "eventos": [{{"nome": "nome do evento (máx. 46 caracteres)", "quando": "ex: 'sáb, 29/11 · 20h'", "onde": "local", "preco": "ex: 'grátis', 'a partir de R$ 40' ou vazio", "categoria": "SHOW|FESTA|TEATRO|FEIRA|GASTRONOMIA|ESPORTE|FAMÍLIA|CULTURA", "por_que_ir": "1 frase curta e animada (máx. 90 caracteres)", "fonte": "nome do site de onde veio"}}] (3 a 8 eventos, em ordem de data),
+ "eventos": [{{"nome": "nome do evento (máx. 46 caracteres)", "dia": "dia curto, ex: 'SEX 05'", "quando": "ex: 'sáb, 29/11 · 20h'", "onde": "local", "preco": "ex: 'grátis', 'a partir de R$ 40' ou vazio", "categoria": "SHOW|FESTA|TEATRO|FEIRA|GASTRONOMIA|ESPORTE|FAMÍLIA|CULTURA", "por_que_ir": "1 frase curta e animada (máx. 90 caracteres)", "fonte": "nome do site de onde veio"}}] (3 a 8 eventos, em ordem de data),
  "legenda": "legenda: 1ª linha gancho com 1 emoji; linha em branco; lista dos eventos, um por linha, com emoji da categoria, nome, dia e local; termina com 'Marca quem vai com você 👇' e 'Tem evento? Manda no direct que a gente divulga'. Sem hashtags. Use \\\\n",
  "hashtags": ["até 6 hashtags"]
 }}"""
