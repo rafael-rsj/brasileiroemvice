@@ -230,7 +230,7 @@ def cover_alert(d, swipe=False, h=1350):
       <h1 class="abs" style="left:56px;right:56px;top:{top + 270}px;font-size:{fs(t, [(26, 140), (44, 118), (999, 96)])}px">{mark(t)}</h1>
       {f'<div class="abs box" style="left:56px;right:56px;bottom:{170 if h == 1350 else 420}px">{rows}</div>' if rows else ''}
       <div class="abs" style="left:56px;bottom:{40 if h == 1350 else 260}px">{seal(dark=False)}</div>
-      <div class="abs" style="right:56px;bottom:{62 if h == 1350 else 282}px;font-weight:700;font-size:22px;color:rgba(255,255,255,.5)">{esc("Fonte: " + d.get("fonte_principal", "")) if d.get("fonte_principal") else ""}</div>
+      <div class="abs" style="right:56px;bottom:{62 if h == 1350 else 282}px;font-weight:500;font-size:16px;color:rgba(255,255,255,.5)">{esc("Fonte: " + d.get("fonte_principal", "")) if d.get("fonte_principal") else ""}</div>
 ''', h=h)
 
 
@@ -268,7 +268,7 @@ def detail(d):
         <div style="font-weight:900;font-size:70px;letter-spacing:-2px">O que se <span style="background:{Y};padding:0 10px">sabe</span></div>
         <div style="font-weight:600;font-size:44px;line-height:1.42;margin-top:40px">{esc(txt)}</div>
       </div>
-      <div class="abs" style="left:56px;bottom:56px;font-weight:700;font-size:24px;color:#555">{esc("Fonte: " + d.get("fonte_principal", "")) if d.get("fonte_principal") else ""}</div>
+      <div class="abs" style="left:56px;bottom:56px;font-weight:500;font-size:16px;color:#777">{esc("Fonte: " + d.get("fonte_principal", "")) if d.get("fonte_principal") else ""}</div>
       <div class="swipe" style="color:{K}">ARRASTA →</div>''')
 
 
@@ -315,7 +315,7 @@ def agenda_item(e, i, total):
       <h1 class="abs" style="left:56px;right:56px;top:290px;font-size:{fs(e["nome"], [(18, 120), (32, 98), (999, 80)])}px">{esc(e["nome"])}</h1>
       <div class="abs box" style="left:56px;right:56px;bottom:270px">{rows}</div>
       <div class="abs" style="left:56px;right:56px;bottom:150px;font-weight:700;font-size:36px;color:{Y}">{esc(e.get("por_que_ir", ""))}</div>
-      <div class="abs" style="left:56px;bottom:56px;font-weight:600;font-size:22px;color:#777">{esc("Fonte: " + e.get("fonte", "")) if e.get("fonte") else ""}</div>
+      <div class="abs" style="left:56px;bottom:56px;font-weight:500;font-size:16px;color:#666">{esc("Fonte: " + e.get("fonte", "")) if e.get("fonte") else ""}</div>
       <div class="swipe" style="color:{Y}">PRÓXIMO →</div>''')
 
 
@@ -330,11 +330,17 @@ def story_from(kind, d, img=None, credit=""):
     return body.replace("</body>", banner + "</body>")
 
 
+def _onde(e):
+    return (f'<br><span style="font-weight:600;font-size:28px;color:#9a9a9a">{esc(e["onde"])}</span>'
+            if e.get("onde") else "")
+
+
 def story_semana_cover(periodo, eventos):
     """1º story da segunda: a semana em Cascavel (vai para o destaque A SEMANA)."""
     lista = "".join(f'<div style="display:flex;gap:22px;align-items:baseline;margin-top:26px">'
                     f'<span style="font-weight:800;font-size:30px;color:{Y};min-width:150px">{esc(e.get("dia", ""))}</span>'
-                    f'<span style="font-weight:700;font-size:38px;line-height:1.2">{esc(e["nome"])}</span></div>' for e in eventos[:7])
+                    f'<span style="font-weight:700;font-size:38px;line-height:1.2">{esc(e["nome"])}'
+                    f'{_onde(e)}</span></div>' for e in eventos[:7])
     return page(f'''<div class="abs" style="inset:0;background:{K}"></div>{texture(periodo, 1080, 1920)}
       <div class="abs" style="left:56px;top:130px">{seal()}</div>
       <div class="abs" style="left:56px;right:56px;top:300px">
@@ -347,7 +353,7 @@ def story_semana_cover(periodo, eventos):
 
 def story_semana_item(e, i, total):
     rows = "".join(f'<div style="margin-top:34px"><div class="lbl">{lbl}</div><div class="val" style="font-size:46px">{esc(v)}</div></div>'
-                   for lbl, v in [("QUANDO", e.get("quando")), ("ONDE", e.get("onde")), ("ENTRADA", e.get("preco"))] if v)
+                   for lbl, v in [("QUANDO", e.get("quando")), ("ENTRADA", e.get("preco"))] if v)
     cat = (e.get("categoria") or "ROLÊ").upper()
     return page(f'''<div class="abs" style="inset:0;background:{K}"></div>{texture(e["nome"] + str(i), 1080, 1920)}
       <div class="abs" style="left:56px;top:130px">{seal()}</div>
@@ -355,10 +361,11 @@ def story_semana_item(e, i, total):
       <div class="abs" style="left:56px;right:56px;top:380px">
         <span class="tag" style="background:transparent;color:#fff;border:3px solid #fff;font-size:30px">{esc(cat)}</span>
         <h1 style="font-size:{fs(e["nome"], [(18, 140), (32, 112), (999, 92)])}px;margin-top:34px">{esc(e["nome"])}</h1>
+        {f'<div style="font-weight:800;font-size:46px;color:{Y};margin-top:22px">📍 {esc(e["onde"])}</div>' if e.get("onde") else ''}
         <div class="box" style="margin-top:60px">{rows}</div>
         <div style="font-weight:700;font-size:42px;color:{Y};margin-top:50px;line-height:1.3">{esc(e.get("por_que_ir", ""))}</div>
       </div>
-      <div class="abs" style="left:56px;bottom:150px;font-weight:600;font-size:26px;color:#777">{esc("Fonte: " + e.get("fonte", "")) if e.get("fonte") else ""}</div>''', h=1920)
+      <div class="abs" style="left:56px;bottom:140px;font-weight:500;font-size:17px;color:#666">{esc("Fonte: " + e.get("fonte", "")) if e.get("fonte") else ""}</div>''', h=1920)
 
 
 def story_weather(w):
