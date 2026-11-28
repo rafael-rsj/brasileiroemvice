@@ -103,12 +103,21 @@ def _stamp():
 
 
 # ------------------------------------------------------------------ post
+def _janela():
+    """Até quantas horas atrás uma notícia ainda serve: o 1º post da manhã pega o que aconteceu desde as 19h de ontem
+    (madrugada incluída); os outros horários só pegam as últimas 8 horas. O que foi, foi."""
+    h = datetime.now(BRT).hour
+    return (max(h + 5, 6), "primeiro post do dia (bom dia): vale o que aconteceu de ontem à noite, na madrugada e hoje cedo") \
+        if h < 10 else (8, f"post das {h}h: vale o que aconteceu hoje, nas últimas horas")
+
+
 def cmd_post(itens_forcados=None, urgente=None):
     import art
-    from writer import pick_and_write
+    from writer import pick_and_write, engajamento
     cfg = load_cfg()
     hist = _load(HISTORY, [])
-    items = itens_forcados or collect()
+    horas, momento = _janela()
+    items = itens_forcados or collect(max_age_h=horas)
     pfile = ROOT / "config" / "pautas.yaml"  # pautas que o dono da página quer ver postadas primeiro
     if pfile.exists() and not itens_forcados:
         import yaml
@@ -118,9 +127,16 @@ def cmd_post(itens_forcados=None, urgente=None):
                 items.insert(0, {"key": f"pauta-{pa['id']}", "title": pa["titulo"], "summary": pa.get("resumo", ""),
                                  "link": pa.get("link", ""), "source": pa.get("fonte", "guizo"), "trusted": True, "pauta": pa["id"]})
                 break
-    data = pick_and_write(items, [] if urgente == "atualizacao" else [h["titulo"] for h in hist])
+    data = pick_and_write(items, [] if urgente == "atualizacao" else [h["titulo"] for h in hist], momento)
     if data and urgente:
         data["urgente"] = urgente
+    hoje = datetime.now(BRT).strftime("%Y%m%d")
+    if not data and not itens_forcados and not any(h.get("engajamento") and h.get("quando", "").startswith(hoje) for h in hist):
+        # sem notícia fresca que preste: post de conversa (debate, POV, complete a frase), no máximo 1 por dia
+        data = engajamento([h["titulo"] for h in hist], momento)
+        if data:
+            data["engajamento"] = True
+            print("Sem notícia nova boa: post de engajamento.")
     if not data:
         print("Nada bom para postar agora.")
         mark_seen([i["key"] for i in items])
@@ -144,7 +160,8 @@ def cmd_post(itens_forcados=None, urgente=None):
     out = ROOT / "media" / stamp[:6] / stamp
     slides = art.shoot(pages, out, "post")
     story = art.shoot([art.story_from(kind, data, img, credit)], out, "story", h=1920)[0]
-    caption = (f"{data['legenda']}\n\n{CTAS[len(hist) % len(CTAS)]}\n\n📰 Fonte: {data.get('fonte_principal', '')}"
+    fonte = f"\n\n📰 Fonte: {data['fonte_principal']}" if data.get("fonte_principal") else ""
+    caption = (f"{data['legenda']}\n\n{CTAS[len(hist) % len(CTAS)]}{fonte}"
                f"\n\n{_tags(cfg, data.get('hashtags', []))}")[:2200]
     print("LEGENDA:\n" + caption)
     if DRY:
@@ -155,12 +172,12 @@ def cmd_post(itens_forcados=None, urgente=None):
         q.append({"file": story.relative_to(ROOT).as_posix(), "created": stamp})
         _save(QUEUE, q)
     mark_seen([i["key"] for i in items])
-    hist.append({"titulo": data["titulo"], "tipo": data["tipo"], "quando": stamp, "links": [u.get("link") for u in data["used"]],
+    hist.append({"titulo": data["titulo"], "tipo": data["tipo"], "quando": stamp, "engajamento": bool(data.get("engajamento")), "links": [u.get("link") for u in data["used"]],
                  "pauta": next((u.get("pauta") for u in data["used"] if u.get("pauta")), None),
                  "reel": {"titulo": data["titulo"], "tipo": data["tipo"], "selo": data.get("selo", ""), "onde": data.get("onde", ""),
                           "quando": data.get("quando", ""), "img": img, "credit": credit, "texto": data.get("slide2_texto", ""),
                           "roteiro": data.get("reel_roteiro", ""), "narrar": bool(data.get("reel_narrar", True)),
-                          "legenda": caption, "feito": False}})
+                          "legenda": caption, "feito": bool(data.get("engajamento"))}})
     _save(HISTORY, hist[-300:])
     _push(f"post {stamp}")
     from instagram import IG
@@ -171,7 +188,7 @@ def cmd_post(itens_forcados=None, urgente=None):
     if page:
         try:
             import facebook
-            fb_txt = (data.get("legenda_facebook") or data["legenda"]) + f"\n\nFonte: {data.get('fonte_principal', '')}\nSiga o Guizo Cascavel para saber tudo da cidade."
+            fb_txt = (data.get("legenda_facebook") or data["legenda"]) + (f"\n\nFonte: {data['fonte_principal']}" if data.get("fonte_principal") else "") + "\n\nSiga o Guizo Cascavel para saber tudo da cidade."
             print("Facebook:", facebook.publicar(str(page), [_url(x) for x in slides], fb_txt))
         except Exception as e:
             print("Facebook pulado:", e)

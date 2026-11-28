@@ -58,13 +58,26 @@ def _ask(prompt: str, max_tokens: int = 4000) -> dict:
     return _json(_text(msg))
 
 
-def pick_and_write(items: list[dict], recent_titles: list[str]) -> dict | None:
+def _idade(it: dict) -> str:
+    from datetime import datetime, timezone
+    if not it.get("published"):
+        return "sem data"
+    h = (datetime.now(timezone.utc) - datetime.fromisoformat(it["published"])).total_seconds() / 3600
+    return f"há {max(int(h), 0)}h"
+
+
+def pick_and_write(items: list[dict], recent_titles: list[str], momento: str = "") -> dict | None:
     """Escolhe a melhor pauta entre as notícias novas e devolve tudo escrito (ou None se nada vale post)."""
     if not items:
         return None
-    listing = "\n".join(f"[{i}] ({it['source']}) {it['title']} — {it['summary'][:280]}" for i, it in enumerate(items[:45]))
-    prompt = f"""Coisas novas sobre Cascavel coletadas agora:
+    listing = "\n".join(f"[{i}] ({it['source']}, {_idade(it)}) {it['title']} — {it['summary'][:280]}" for i, it in enumerate(items[:45]))
+    prompt = f"""Coisas novas sobre Cascavel coletadas agora ({momento or 'agora'}):
 {listing}
+
+FRESCOR É OBRIGATÓRIO: só vale fato que aconteceu nas últimas horas ou que ainda está em andamento/afeta a pessoa hoje.
+Notícia de ontem que já circulou NÃO serve, mesmo que seja boa (o que foi, foi). Se o texto indica que o fato foi
+"ontem", "na última sexta" ou antes, descarte. Item "sem data" só se o texto deixar claro que é de hoje.
+Melhor pular do que postar coisa velha.
 
 Já postamos recentemente (não repita o assunto):
 {chr(10).join('- ' + t for t in recent_titles[-20:]) or '- nada ainda'}
@@ -108,6 +121,47 @@ Responda SOMENTE em JSON:
     data["used"] = [items[i] for i in data.get("indices", []) if 0 <= i < len(items)]
     if not data["used"]:
         return None
+    return data
+
+
+def engajamento(recent_titles: list[str], momento: str) -> dict | None:
+    """Sem notícia fresca boa: post de conversa que faz o morador comentar, marcar alguém e salvar. Nada de fato inventado."""
+    from datetime import datetime, timedelta, timezone
+    agora = datetime.now(timezone(timedelta(hours=-3)))
+    dias = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
+    data = _ask(f"""Hoje é {dias[agora.weekday()]}, {agora.day:02d}/{agora.month:02d}, {momento}. Não apareceu notícia nova que preste,
+então o guizo vai postar algo para o pessoal de Cascavel comentar e se identificar.
+
+Já postamos (não repita a ideia):
+{chr(10).join('- ' + t for t in recent_titles[-25:]) or '- nada ainda'}
+
+Escolha UM formato e crie o post:
+- DEBATE: "Qual é o melhor ___ de Cascavel?" (xis, pastel, café da manhã, pizza, açaí, lugar pra levar visita, rolê de domingo...) — a resposta fica nos comentários;
+- POV de morador: humor que todo cascavelense reconhece (frio de manhã e calor à tarde, vento, Avenida Brasil, Lago Municipal, garoa, sotaque, distância do litoral...);
+- COMPLETE A FRASE: "Cascavel sem ___ não é Cascavel", "Só quem mora em Cascavel sabe que ___";
+- ESSE OU ESSE: duas opções locais genéricas para votar nos comentários;
+- MARCA ALGUÉM: "Marca aquele amigo que ___" com situação típica da cidade;
+- de manhã cabe um "bom dia, Cascavel" leve com pergunta do dia; sexta/sábado cabe pergunta de rolê; domingo cabe clima de descanso.
+REGRAS: não invente fato, número, data, preço, notícia, nem cite estabelecimento pelo nome (eles vêm nos comentários).
+Nada de política, religião ou tema sensível. Tom leve, de amigo, sem ser infantil.
+Responda SOMENTE em JSON:
+{{
+ "tipo": "CIDADE",
+ "selo": "ex: 'COMENTA AÍ', 'DEBATE', 'SÓ QUEM MORA AQUI', 'MARCA ALGUÉM' (máx. 22 caracteres)",
+ "titulo": "frase da arte com *destaque*, máx. 70 caracteres",
+ "subtitulo": "1 frase curta que puxa a resposta, máx. 110 caracteres",
+ "onde": "", "quando": "", "dados": [], "slide2_texto": "",
+ "fonte_principal": "",
+ "legenda": "1ª linha gancho com 1 emoji; linha em branco; 1 a 2 frases; termina com o pedido claro (comenta, marca, vota). Sem hashtags. Use \\n",
+ "legenda_facebook": "versão para público de 30 a 60 anos, tom simpático e claro, sem gíria; termina com pergunta. Use \\n",
+ "hashtags": ["até 5 hashtags locais"],
+ "busca_foto": "",
+ "story_pergunta": "pergunta curta para enquete (máx. 40 caracteres)",
+ "reel_roteiro": "", "reel_narrar": false
+}}""")
+    if not data or not data.get("titulo"):
+        return None
+    data["used"] = []
     return data
 
 
